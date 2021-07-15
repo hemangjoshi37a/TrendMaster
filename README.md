@@ -8,10 +8,11 @@ Using Transformer deep learning architecture to predict stock prices.
 
 Place a custom order on Fiverr : https://www.fiverr.com/share/7KpVd1
 
+Our Telegram Stock Market Tips Link : https://t.me/joinchat/Xad-Dry-GlI2MGFl
+
 Mobile : +917016525813
 Whatsapp & Telegram : +919409077371
 Email : hemangjoshi37a@gmail.com
-
 
 Please contribute your suggestions and corections to support our efforts.
 
