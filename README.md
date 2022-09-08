@@ -29,6 +29,7 @@ You can donate us $5 on PayPal.
 - [TrendMaster](https://github.com/hemangjoshi37a/TrendMaster)
 - [hjAlgos_notebooks](https://github.com/hemangjoshi37a/hjAlgos_notebooks)
 - [AutoCut](https://github.com/hemangjoshi37a/AutoCut)
+- [My_Projects](https://github.com/hemangjoshi37a/My_Projects)
 
 ## Checkout Our Other Products:
 - [WiFi IoT LED Matrix Display](https://hjlabs.in/product/wifi-iot-led-display)
