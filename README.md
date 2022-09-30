@@ -37,6 +37,7 @@ Buy us a coffee for $5 on PayPal ?
 - [AutoCut](https://github.com/hemangjoshi37a/AutoCut)
 - [My_Projects](https://github.com/hemangjoshi37a/My_Projects)
 - [Cool Arduino and ESP8266 or NodeMCU Projects](https://github.com/hemangjoshi37a/my_Arduino)
+- [Telegram Trade Msg Backtest ML](https://github.com/hemangjoshi37a/TelegramTradeMsgBacktestML)
 
 ## Checkout Our Other Products:
 - [WiFi IoT LED Matrix Display](https://hjlabs.in/product/wifi-iot-led-display)
