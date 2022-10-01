@@ -68,3 +68,8 @@ Buy us a coffee for $5 on PayPal ?
 
 ## Our HuggingFace Datasets :
 - [hemangjoshi37a/autotrain-data-ratnakar_1000_sample_curated : Stock tip message NER(Named Entity Recognition or Token Classification) using HUggingFace-AutoTrain and LabelStudio and Ratnakar Securities Pvt. Ltd.](https://huggingface.co/datasets/hemangjoshi37a/autotrain-data-ratnakar_1000_sample_curated)
+
+## We sell Gigs on Fiverr : 
+- [code android and ios app for you using flutter firebase software stack](https://business.fiverr.com/share/3v14pr)
+- [code custom algotrading software for zerodha or angel broking](https://business.fiverr.com/share/kzkvEy)
+
