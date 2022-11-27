@@ -79,3 +79,15 @@ Buy us a coffee for $5 on PayPal ?
 ## My Quirky Blog
 - [Hemang Joshi](http://hemangjoshi.blogspot.com/)
 
+## Awesome Android Apps :
+- [SWiBoard :Tasmota MQTT Control](https://play.google.com/store/apps/details?id=in.hjlabs.swiboard)
+ 
+## Checkout Cool GitLab Other Repositories:
+- [pyPortMan](https://gitlab.com/hemangjoshi37a/pyPortMan)
+- [transformers_stock_prediction](https://gitlab.com/hemangjoshi37a/transformers_stock_prediction)
+- [TrendMaster](https://gitlab.com/hemangjoshi37a/TrendMaster)
+- [hjAlgos_notebooks](https://gitlab.com/hemangjoshi37a/hjAlgos_notebooks)
+- [AutoCut](https://gitlab.com/hemangjoshi37a/AutoCut)
+- [My_Projects](https://gitlab.com/hemangjoshi37a/My_Projects)
+- [Cool Arduino and ESP8266 or NodeMCU Projects](https://gitlab.com/hemangjoshi37a/my_Arduino)
+- [Telegram Trade Msg Backtest ML](https://gitlab.com/hemangjoshi37a/TelegramTradeMsgBacktestML)
