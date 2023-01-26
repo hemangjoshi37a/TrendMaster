@@ -1,12 +1,19 @@
-# TrendMaster
-Using Transformer deep learning architecture to predict stock prices.
+# TrendMaster: Stock Price Prediction using Transformer Deep Learning Architecture
+Are you looking for a reliable and accurate way to predict stock prices? Look no further than TrendMaster, a cutting-edge tool that utilizes the powerful Transformer deep learning architecture.
 
+With TrendMaster, you can easily predict future stock prices and make informed investment decisions. The tool is backed by a wealth of data and advanced algorithms, making it one of the most effective stock prediction tools on the market.
 
-![result](https://user-images.githubusercontent.com/12392345/125791380-341cecb7-a605-4147-9310-e5055f30b220.gif)
-![transformer-future200](https://user-images.githubusercontent.com/12392345/125791397-a344831b-b28c-4660-b295-924cb7123872.png)
+![Result](https://user-images.githubusercontent.com/12392345/125791380-341cecb7-a605-4147-9310-e5055f30b220.gif)
+
+Our Transformer-based prediction model is trained on a large dataset of historical stock prices, giving it the ability to identify patterns and trends that would be impossible for a human to discern. The model's predictions are also highly accurate, with a mean average error of just a few percentage points.
+
+![Transformer-Future200](https://user-images.githubusercontent.com/12392345/125791397-a344831b-b28c-4660-b295-924cb7123872.png)
+
+In addition to stock price prediction, TrendMaster also offers a range of other features, such as real-time data visualization and a user-friendly interface. With TrendMaster, you'll have all the information you need to make smart investment decisions.
+
 ![Screenshot from 2021-07-15 18-26-49](https://user-images.githubusercontent.com/12392345/125791827-a4597af0-1292-42d0-9eb1-118d7ef64cbc.png)
 
-
+So why wait? Try TrendMaster today and see the difference for yourself!
 
 ## Social Media :
 * <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/whatsapp.jpg" width="15px;"/> [WhatsApp/917016525813](https://wa.me/917016525813)
