@@ -14,13 +14,12 @@ In addition to stock price prediction, TrendMaster also offers a range of other 
 ![Screenshot from 2021-07-15 18-26-49](https://user-images.githubusercontent.com/12392345/125791827-a4597af0-1292-42d0-9eb1-118d7ef64cbc.png)
 
 So why wait? Try TrendMaster today and see the difference for yourself!
-
-## Social Media :
+### Social Media :
 * <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/whatsapp.jpg" width="15px;"/> [WhatsApp/917016525813](https://wa.me/917016525813)
 * <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/telegram.me.jpg" width="15px;"/> [Telegram/hjlabs](https://t.me/hjlabs)
-* [<img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/email.jpg" width="15px;"/> Gmail/hemangjoshi37a@gmail.com](mailto:hemangjoshi37a@gmail.com)
-* [<img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/facebook.jpg" width="15px;"/> Facebook/hemangjoshi37](https://www.facebook.com/hemangjoshi37/)
-* [<img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/twitter.jpg" width="15px;"/> Twitter/HemangJ81509525](https://twitter.com/HemangJ81509525)
+* <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/email.jpg" width="15px;"/> [Gmail/hemangjoshi37a@gmail.com](mailto:hemangjoshi37a@gmail.com)
+* <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/facebook.jpg" width="15px;"/> [Facebook/hemangjoshi37](https://www.facebook.com/hemangjoshi37/)
+* <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/twitter.jpg" width="15px;"/> [Twitter/HemangJ81509525](https://twitter.com/HemangJ81509525)
 * <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/linkedin.jpg" width="15px;"/> [LinkedIn/hemang-joshi-046746aa](https://www.linkedin.com/in/hemang-joshi-046746aa/)
 * <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/tumblr.jpg" width="15px;"/> [Tumblr/hemangjoshi37a-blog](https://www.tumblr.com/blog/hemangjoshi37a-blog)
 * <img src="https://raw.githubusercontent.com/bradvin/social-share-urls/master/images/logo-icons/pinterest.jpg" width="15px;"/> [Pinterest/hemangjoshi37a](https://in.pinterest.com/hemangjoshi37a/)
