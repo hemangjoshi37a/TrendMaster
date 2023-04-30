@@ -100,9 +100,3 @@ So why wait? Try TrendMaster today and see the difference for yourself!
 - [Cool Arduino and ESP8266 or NodeMCU Projects](https://gitlab.com/hemangjoshi37a/my_Arduino)
 - [Telegram Trade Msg Backtest ML](https://gitlab.com/hemangjoshi37a/TelegramTradeMsgBacktestML)
 
-## Awesome Fiverr. Gigs:
-- [develop machine learning ner model as in nlp using python](https://www.fiverr.com/share/9YNabx)
-- [train custom chatgpt question answering model](https://www.fiverr.com/share/rwx6r7)
-- [build algotrading, backtesting and stock monitoring tools using python](https://www.fiverr.com/share/A7Y14q)
-- [tutor you in your science problems](https://www.fiverr.com/share/zPzmlz)
-- [make apps for you crossplatform	](https://www.fiverr.com/share/BGw12l)
