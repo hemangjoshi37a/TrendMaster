@@ -5,6 +5,16 @@ With TrendMaster, you can easily predict future stock prices and make informed i
 
 ![Result](https://user-images.githubusercontent.com/12392345/125791380-341cecb7-a605-4147-9310-e5055f30b220.gif)
 
+## Star History
+
+<a href="https://star-history.com/#hemangjoshi37a/TrendMaster&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=hemangjoshi37a/TrendMaster&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=hemangjoshi37a/TrendMaster&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=hemangjoshi37a/TrendMaster&type=Date" />
+ </picture>
+</a>
+
 Our Transformer-based prediction model is trained on a large dataset of historical stock prices, giving it the ability to identify patterns and trends that would be impossible for a human to discern. The model's predictions are also highly accurate, with a mean average error of just a few percentage points.
 
 ![Transformer-Future200](https://user-images.githubusercontent.com/12392345/125791397-a344831b-b28c-4660-b295-924cb7123872.png)
