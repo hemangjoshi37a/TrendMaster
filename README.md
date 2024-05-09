@@ -1,9 +1,33 @@
-# TrendMaster: Stock Price Prediction using Transformer Deep Learning Architecture
-Are you looking for a reliable and accurate way to predict stock prices? Look no further than TrendMaster, a cutting-edge tool that utilizes the powerful Transformer deep learning architecture.
 
-With TrendMaster, you can easily predict future stock prices and make informed investment decisions. The tool is backed by a wealth of data and advanced algorithms, making it one of the most effective stock prediction tools on the market.
+# TrendMaster: Stock Price Prediction using Transformer Deep Learning Architecture
+TrendMaster leverages advanced Transformer deep learning architecture to provide highly accurate stock price predictions, enabling informed investment decisions.
+
+Utilizing a wealth of data and sophisticated algorithms, TrendMaster stands out as a top-tier tool for financial forecasting.
 
 ![Result](https://user-images.githubusercontent.com/12392345/125791380-341cecb7-a605-4147-9310-e5055f30b220.gif)
+
+## Installation
+To get started with TrendMaster, run the following installation command:
+
+```bash
+pip install TrendMaster
+```
+
+## Usage
+Here's how to integrate TrendMaster into your Python projects:
+
+```python
+from trendmaster import TrendMaster
+#Initialize the TrendMaster object
+tm = TrendMaster()
+#Load your data
+data = tm.load_data('path_to_your_data.csv')
+#Train the model
+tm.train(data, transformer_params={'num_layers': 3, 'dropout': 0.1})
+#Perform inference
+predictions = tm.infer('path_to_trained_model.pth')
+print(predictions)
+```
 
 ## Star History
 
