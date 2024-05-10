@@ -1,3 +1,4 @@
+Please adda a ⭐
 
 # TrendMaster: Stock Price Prediction using Transformer Deep Learning Architecture
 TrendMaster leverages advanced Transformer deep learning architecture to provide highly accurate stock price predictions, enabling informed investment decisions.
