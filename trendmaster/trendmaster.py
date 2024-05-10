@@ -41,7 +41,7 @@ class TrendMaster:
 
 def main():
     tm = TrendMaster()
-    symbol = 'AAPL'
+    symbol = 'SBIN'
     transformer_params = {'num_layers': 3, 'dropout': 0.1}
     tm.train_model(symbol, transformer_params)
     predictions = tm.infer_model(symbol, '2021-01-01', '2021-01-10')

@@ -67,7 +67,14 @@ class Inferencer:
                 dpp = dpp - diff
             self.col_list.append(np.append(self.orig_data, dpp))
             self.orig_data = np.append(self.orig_data, dpp[:input_window])
-
+            
+    def infer(self, model_path, symbol, from_date, to_date):
+        self.authenticate()
+        data = DataLoader.get_stock_data(self.kite, symbol)
+        # Assuming prediction logic is implemented here
+        results = {"data": data, "predictions": None}  # Placeholder for actual prediction results
+        return results
+    
 # # Example usage
 # inferencer = Inferencer('./best_model_multi18.pt')
 # inferencer.run_inference(2, 3356417)
