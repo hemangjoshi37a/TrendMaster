@@ -3,9 +3,11 @@ from sklearn.preprocessing import MinMaxScaler
 import torch
 import numpy as np
 from jugaad_trader import Zerodha
+import pandas as pd
 
 class DataLoader:
-    def authenticate_user():
+    
+    def authenticate_user(self):
         """
         Authenticate the user with Zerodha and return the kite instance.
 
@@ -13,33 +15,35 @@ class DataLoader:
         """
         kite = Zerodha()
         print("Please enter your Zerodha credentials:")
-        user_id = input("User ID: ")
-        password = input("Password: ")
-        twofa = input("2FA: ")
+        user_id = input("Zerodha User ID: ")
+        password = input("Zerodha Password: ")
+        twofa = input("Zerodha 2FA: ")
         kite.login(user_id=user_id, password=password, twofa=twofa)
         return kite
 
-    def get_stock_data(kite, symbol):
+    def get_stock_data(self, kite, symbol):
         """
         Fetch stock data for a given symbol using the provided kite instance.
 
         :param kite: Zerodha kite instance
         :param symbol: str, stock symbol to fetch data for
-        :return: str, filename where the data is saved
+        :return: pandas dataframe of given stock name
         """
         print(f"Fetching data for {symbol}")
         from_date = input("Enter start date (YYYY-MM-DD): ")
         to_date = input("Enter end date (YYYY-MM-DD): ")
-        interval = 'day'
-        data = kite.historical_data(symbol, from_date, to_date, interval)
+        interval = 'minute'
+        tkn = kite.ltp(f'NSE:{symbol}')[f'NSE:{symbol}']['instrument_token']
+        data = kite.historical_data(tkn, from_date, to_date, interval)
         filename = f"{symbol}_data.csv"
-        data.to_csv(filename)
+        this_df  =  pd.DataFrame(data)
+        this_df.to_csv(filename)
         print(f"Data saved to {filename}")
-        return filename
+        return this_df
+
     
-    
-    def load(self, inst, filepath):
-        this_inst_df = joblib.load(f'{filepath}/{inst}.p')
+    def load(self, symbol, filepath):
+        this_inst_df = joblib.load(f'{filepath}/{symbol}_data.pkl')
         amplitude = this_inst_df['close'].to_numpy()
         amplitude = amplitude.reshape(-1)
         
@@ -47,21 +51,13 @@ class DataLoader:
         amplitude = scaler.fit_transform(amplitude.reshape(-1, 1)).reshape(-1)
         
         return amplitude, scaler
+    
     def authenticate_user():
-        kite = Zerodha()
         print("Please enter your Zerodha credentials:")
-        user_id = input("User ID: ")
-        password = input("Password: ")
-        twofa = input("2FA: ")
-        kite.login(user_id=user_id, password=password, twofa=twofa)
+        user_id = input("Zerodha User ID: ")
+        password = input("Zerodha Password: ")
+        twofa = input("Zerodha 2FA: ")
+        kite = Zerodha(user_id=user_id, password=password, twofa=twofa)
+        kite.login()
         return kite
-    def get_stock_data(kite, symbol):
-        print(f"Fetching data for {symbol}")
-        from_date = input("Enter start date (YYYY-MM-DD): ")
-        to_date = input("Enter end date (YYYY-MM-DD): ")
-        interval = 'day'
-        data = kite.historical_data(symbol, from_date, to_date, interval)
-        filename = f"{symbol}_data.csv"
-        data.to_csv(filename)
-        print(f"Data saved to {filename}")
-        return filename
+    

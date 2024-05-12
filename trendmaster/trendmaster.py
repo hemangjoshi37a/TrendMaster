@@ -1,12 +1,17 @@
-import joblib
-from .data_loader import DataLoader
 from .trainer import Trainer
 from .inferencer import Inferencer
+from .data_loader import DataLoader
+import torch
+import torch.nn as nn
+from .model_definitions import  TransAm
+import joblib 
 
 class TrendMaster:
     def __init__(self):
         self.data_loader = DataLoader()
-        self.trainer = Trainer()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = TransAm(feature_size=190, num_layers=2, dropout=0.2).to(self.device)
+        self.trainer = Trainer(model=self.model, device=self.device)
         self.inferencer = Inferencer()
         self.authenticated_kite = None
 
@@ -32,20 +37,9 @@ class TrendMaster:
         self.trainer.train(data, transformer_params)
         self.trainer.save_model(f'models/{symbol}_model.pth')
 
-    def infer_model(self, symbol, from_date, to_date):
+    def infer_model(self, symbol):
         if self.authenticated_kite is None:
             self.authenticate()
         model_path = f'models/{symbol}_model.pth'
-        results = self.inferencer.infer(model_path, symbol, from_date, to_date)
+        results = self.inferencer.infer( symbol,self.authenticated_kite)
         return results
-
-def main():
-    tm = TrendMaster()
-    symbol = 'SBIN'
-    transformer_params = {'num_layers': 3, 'dropout': 0.1}
-    tm.train_model(symbol, transformer_params)
-    predictions = tm.infer_model(symbol, '2021-01-01', '2021-01-10')
-    print(predictions)
-
-if __name__ == "__main__":
-    main()

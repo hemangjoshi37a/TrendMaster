@@ -1,25 +1,39 @@
+from symbol import sym_name
 from .data_loader import DataLoader
 from .trainer import Trainer
 from .inferencer import Inferencer
 import joblib
+import torch
+from .model_definitions import PositionalEncoding, TransAm
+import os
+
 class TrendMaster:
     """
     Class to handle loading data, training, and inferencing for stock price prediction.
     """
-    def __init__(self):
+    def __init__(self, symbol_name_stk='SBIN'):
         self.data_loader = DataLoader()
-        self.trainer = Trainer()
-        self.inferencer = Inferencer()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Check if the model file exists
+        model_path = f'./models/{symbol_name_stk}_model.pkl'
+        if os.path.exists(model_path):
+            self.model = joblib.load(model_path)
+        else:
+            # Initialize a new model if the file does not exist
+            self.model = TransAm(feature_size=190, num_layers=2, dropout=0.2).to(self.device)
+        self.trainer = Trainer(model=self.model, device=self.device)
         self.authenticated_kite = None
+        print(model_path)
+        self.inferencer = Inferencer
         
     def authenticate(self):
         if self.authenticated_kite is None:
-            self.authenticated_kite = self.data_loader.authenticate_user()
+            self.authenticated_kite = DataLoader.authenticate_user()
             joblib.dump(self.authenticated_kite, 'kite_session.pkl')
         else:
             self.authenticated_kite = joblib.load('kite_session.pkl')
 
-    def load_data(self, filepath):
+    def load_data(self, symbol):
         """
         Load OHLC historical data from a specified file path.
         """
@@ -33,14 +47,12 @@ class TrendMaster:
         """
         Start the training process with the given data and transformer parameters.
         """
-        data = joblib.load(f'{symbol}_data.pkl')
-        if data is None:
-            data = self.load_data(symbol)
-        self.trainer.train(data, transformer_params)
+        data,scaler = self.data_loader.load(symbol=symbol,filepath='.')
+        self.trainer.train(data,scaler=scaler, **transformer_params)
         self.trainer.save_model(f'models/{symbol}_model.pth')
 
 
-    def infer(self, model_path, symbol, from_date, to_date):
+    def infer(self,  symbol):
         """
         Perform inference using a trained model for a given stock symbol.
 
@@ -50,13 +62,6 @@ class TrendMaster:
         """
         if self.authenticated_kite is None:
             self.authenticate()
-        results = self.inferencer.infer(model_path, symbol, from_date, to_date)
+        self.inferencer=Inferencer(f'./models/{symbol}_model.pth')
+        results = self.inferencer.infer(symbol)
         return results
-
-def main():
-    # Example usage
-    tm = TrendMaster()
-    data = tm.load_data('path_to_data.csv')
-    tm.train(data, {'num_layers': 3, 'dropout': 0.1})
-    predictions = tm.infer('path_to_trained_model.pth')
-    print(predictions)
