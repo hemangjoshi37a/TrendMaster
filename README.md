@@ -20,13 +20,14 @@ Here's how to integrate TrendMaster into your Python projects:
 ```python
 from trendmaster import TrendMaster
 #Initialize the TrendMaster object
-tm = TrendMaster()
+tm = TrendMaster(symbol_name_stk='SBIN')
 #Load your data
-data = tm.load_data('path_to_your_data.csv')
+test_symbol = 'SBIN'
+data = tm.load_data(symbol=test_symbol)
 #Train the model
-tm.train(data, transformer_params={'num_layers': 3, 'dropout': 0.1})
+tm.train(test_symbol, transformer_params={'epochs': 1})
 #Perform inference
-predictions = tm.infer('path_to_trained_model.pth')
+predictions = tm.inferencer.predict_future(val_data=data,future_steps=100,symbol='SBIN')
 print(predictions)
 ```
 
