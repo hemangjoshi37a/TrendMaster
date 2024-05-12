@@ -59,6 +59,7 @@ class Inferencer:
         total_loss = 0.
         test_result = torch.Tensor(0)    
         truth = torch.Tensor(0)
+        val_data = val_data.values  # Convert pandas DataFrame to numpy array
         _ , data = self.get_batch(val_data, 0,1)
         with torch.no_grad():
             for i in range(0, future_steps,1):
@@ -114,7 +115,6 @@ class Inferencer:
     #     targets = torch.FloatTensor([item[1] for item in batch]).to(self.device)
     #     return inputs, targets
     
-        
     def get_batch(self, source, i, batch_size):
         seq_len = min(batch_size, len(source) - 1 - i)
         batch = source[i:i+seq_len]
