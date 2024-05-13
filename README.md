@@ -17,17 +17,18 @@ pip install TrendMaster
 ## Usage
 Here's how to integrate TrendMaster into your Python projects:
 
+
 ```python
 from trendmaster import TrendMaster
 #Initialize the TrendMaster object
-tm = TrendMaster(symbol_name_stk='SBIN')
-#Load your data
 test_symbol = 'SBIN'
+tm = TrendMaster(symbol_name_stk=test_symbol)
+#Load your data
 data = tm.load_data(symbol=test_symbol)
 #Train the model
 tm.train(test_symbol, transformer_params={'epochs': 1})
 #Perform inference
-predictions = tm.inferencer.predict_future(val_data=data,future_steps=100,symbol='SBIN')
+predictions = tm.inferencer.predict_future(val_data=data,future_steps=100,symbol=test_symbol)
 print(predictions)
 ```
 
