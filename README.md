@@ -80,7 +80,7 @@ train_data, test_data = data_loader.prepare_data(
 import torch
 # Initialize model, trainer, and train the model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Training of {device} device.')
+print(f'Training on {device} device.')
 model = TransAm(num_layers=2, dropout=0.2).to(device)
 
 trainer = Trainer(model, device, learning_rate=0.001)
@@ -102,6 +102,19 @@ predictions = inferencer.predict(
 # Evaluate the model
 test_loss = inferencer.evaluate(test_data, batch_size=32)
 ```
+
+## 📈 Backtest Results
+
+Evaluate the performance of TrendMaster using our comprehensive backtesting framework. Our Transformer-based model has been rigorously tested to ensure reliability and accuracy in diverse market conditions.
+
+### 🔍 View Backtest Results
+
+Explore detailed backtest results on our [hjAlgos Backtest Platform](https://hjalgos.hjlabs.in/backtest/).
+
+![bokeh_plot (35)](https://github.com/user-attachments/assets/c2e7a910-3aa8-494d-958e-48199cf85459)
+
+
+*Sample Backtest Performance Chart*
 
 ## 📊 Sample Results
 
