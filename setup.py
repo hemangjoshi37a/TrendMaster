@@ -5,14 +5,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="trendmaster",
-    version="0.2.0",
+    version="0.2.3",
     author="Hemang Joshi",
     author_email="hemangjoshi37a@gmail.com",
     description="Stock Price Prediction using Transformer Deep Learning Architecture",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/hemangjoshi37a/TrendMaster",
-    packages=find_packages(exclude=["tests", "examples"]),
+    packages=find_packages(exclude=["Training","Inference"]),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

@@ -3,19 +3,35 @@
 [![Python Version](https://img.shields.io/badge/python-3.7%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/hemangjoshi37a/TrendMaster?style=social)](https://github.com/hemangjoshi37a/TrendMaster/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/hemangjoshi37a/TrendMaster?style=social)](https://github.com/hemangjoshi37a/TrendMaster/fork)
+[![GitHub Issues](https://img.shields.io/github/issues/hemangjoshi37a/TrendMaster)](https://github.com/hemangjoshi37a/TrendMaster/issues)
 
-TrendMaster leverages cutting-edge Transformer deep learning architecture to deliver highly accurate stock price predictions, empowering you to make informed investment decisions.
+TrendMaster is an advanced stock price prediction library that leverages Transformer deep learning architecture to deliver highly accurate predictions, empowering investors with data-driven insights.
 
-![TrendMaster Demo](https://user-images.githubusercontent.com/12392345/125791380-341cecb7-a605-4147-9310-e5055f30b220.gif)
+## Table of Contents
+
+- [Features](#features)
+- [Why TrendMaster?](#why-trendmaster)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Sample Results](#sample-results)
+- [User Interface](#user-interface)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+- [Show Your Support](#show-your-support)
+- [Contact](#contact)
+- [More from HJ Labs](#more-from-hj-labs)
+- [Try Our Algo Trading Platform hjAlgos](#try-our-algo-trading-platform-hjalgos)
 
 ## 🚀 Features
 
-- Advanced Transformer-based prediction model
-- High accuracy with mean average error of just a few percentage points
-- Real-time data visualization
-- User-friendly interface
-- Customizable model parameters
-- Support for multiple stock symbols
+- **Advanced Transformer-based prediction model**
+- **High accuracy with mean average error of just a few percentage points**
+- **Real-time data visualization**
+- **User-friendly interface**
+- **Customizable model parameters**
+- **Support for multiple stock symbols**
 
 ## 📊 Why TrendMaster?
 
@@ -77,10 +93,11 @@ train_data, test_data = data_loader.prepare_data(
     output_window=10,
     train_test_split=0.8
 )
+
 import torch
 # Initialize model, trainer, and train the model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Training of {device} device.')
+print(f'Training on {device} device.')
 model = TransAm(num_layers=2, dropout=0.2).to(device)
 
 trainer = Trainer(model, device, learning_rate=0.001)
@@ -150,7 +167,7 @@ Check out our other exciting projects:
 
 ## 📫 Try Our Algo Trading Platform hjAlgos
 
-Ready to elevate your trading strategy? 
+Ready to elevate your trading strategy?
 
 <a href="https://hjalgos.hjlabs.in" style="
     display: inline-block;
@@ -170,3 +187,4 @@ Ready to elevate your trading strategy?
 ---
 
 Created with ❤️ by [Hemang Joshi](https://github.com/hemangjoshi37a)
+
