@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrendMaster: Advanced Stock Price Prediction</title>
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --secondary-color: #10B981;
+            --text-color: #1F2937;
+            --background-color: #F9FAFB;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+        }
+        .header {
+            text-align: center;
+            padding: 2rem 0;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .badges {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .badge {
+            background-color: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .section {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .project-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .project-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            padding: 1rem 0;
+            color: #6B7280;
+        }
+        .performance-images {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .performance-images img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 TrendMaster</h1>
+        <p>Advanced Stock Price Prediction using Transformer Deep Learning</p>
+        <div class="badges">
+            <span class="badge">Python 3.7+</span>
+            <span class="badge">MIT License</span>
+            <span class="badge">GitHub Stars</span>
+            <span class="badge">GitHub Forks</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🌟 Key Features</h2>
+        <ul>
+            <li>Advanced Transformer-based prediction model</li>
+            <li>High accuracy with mean average error of just a few percentage points</li>
+            <li>Real-time data visualization</li>
+            <li>User-friendly interface</li>
+            <li>Customizable model parameters</li>
+            <li>Support for multiple stock symbols</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>🛠️ Installation</h2>
+        <pre><code>pip install TrendMaster</code></pre>
+    </div>
+
+    <div class="section">
+        <h2>💡 Quick Start</h2>
+        <pre><code>from trendmaster import DataLoader, TransAm, Trainer, Inferencer, set_seed
+
+# Set random seed
+set_seed(42)
+
+# Initialize data loader
+data_loader = DataLoader()
+
+# Prepare stock data
+train_data, test_data = data_loader.prepare_data(
+    symbol='RELIANCE',
+    from_date='2023-01-01',
+    to_date='2023-02-27',
+    input_window=30,
+    output_window=10
+)
+
+# Train model
+model = TransAm(num_layers=2, dropout=0.2)
+trainer = Trainer(model, device)
+trainer.train(train_data, test_data)</code></pre>
+    </div>
+
+    <div class="section">
+        <h2>📊 Performance Highlights</h2>
+        <div class="performance-images">
+            <img src="https://github.com/user-attachments/assets/c2e7a910-3aa8-494d-958e-48199cf85459" alt="Backtest Performance">
+            <img src="https://user-images.githubusercontent.com/12392345/125791397-a344831b-b28c-4660-b295-924cb7123872.png" alt="Prediction Accuracy">
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🖥️ User Interface</h2>
+        <img src="https://user-images.githubusercontent.com/12392345/125791827-a4597af0-1292-42d0-9eb1-118d7ef64cbc.png" alt="TrendMaster UI" style="max-width: 100%; border-radius: 10px;">
+    </div>
+
+    <div class="project-links">
+        <a href="https://github.com/hemangjoshi37a/TrendMaster/wiki">Documentation</a>
+        <a href="https://github.com/hemangjoshi37a/TrendMaster/blob/main/CONTRIBUTING.md">Contribute</a>
+        <a href="https://github.com/hemangjoshi37a/TrendMaster/blob/main/LICENSE">License</a>
+    </div>
+
+    <div class="section">
+        <h2>🌍 Connect With Us</h2>
+        <p>
+            <strong>Website:</strong> <a href="https://hjlabs.in/">hjlabs.in</a><br>
+            <strong>Email:</strong> <a href="mailto:hemangjoshi37a@gmail.com">hemangjoshi37a@gmail.com</a><br>
+            <strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/hemang-joshi-046746aa">Hemang Joshi</a>
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>🚀 Explore More Projects</h2>
+        <div class="project-links">
+            <a href="https://github.com/hemangjoshi37a/pyPortMan">pyPortMan</a>
+            <a href="https://github.com/hemangjoshi37a/AutoCut">AutoCut</a>
+            <a href="https://github.com/hemangjoshi37a/TelegramTradeMsgBacktestML">TelegramTradeMsgBacktestML</a>
+        </div>
+    </div>
+
+    <div class="section" style="text-align: center;">
+        <h2>💡 Try hjAlgos Trading Platform</h2>
+        <a href="https://hjalgos.hjlabs.in" class="cta-button">Explore AlgoTrading Platform</a>
+    </div>
+
+    <div class="footer">
+        <p>Created with ❤️ by <a href="https://github.com/hemangjoshi37a">Hemang Joshi</a></p>
+    </div>
+</body>
+</html>
