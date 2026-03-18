@@ -13,7 +13,7 @@ from jugaad_trader import Zerodha
 
 # ---------------------- Utils ----------------------
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
     """Set the random seed for reproducibility."""
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)

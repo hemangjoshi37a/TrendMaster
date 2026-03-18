@@ -55,7 +55,7 @@ pip install TrendMaster
 Here's how to integrate TrendMaster into your Python projects:
 
 ```python
-# Example usage of merged_module.py
+# Example usage of trendmaster.py
 
 from trendmaster import (
     DataLoader,
