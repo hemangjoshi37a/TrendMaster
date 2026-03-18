@@ -86,19 +86,64 @@ class DataLoader:
         data = self.kite.historical_data(tkn, from_date, to_date, interval)
         return pd.DataFrame(data)
 
-    def preprocess_data(self, data, column='close'):
+    def add_technical_indicators(self, data):
+        """Add RSI, EMA 20, EMA 50, and MACD/Signal features to the data."""
+        df = data.copy()
+        df.columns = [c.lower() for c in df.columns]
+        
+        # RSI
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0))
+        loss = (-delta.where(delta < 0, 0))
+        avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+        rs = avg_gain / avg_loss
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        # EMA
+        df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean()
+        df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+        
+        # MACD
+        exp1 = df['close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd'] = exp1 - exp2
+        df['signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+        
+        df.bfill(inplace=True)
+        return df
+
+    def preprocess_data(self, data, columns=['close'], train=False):
         """Preprocess the data for model input."""
-        amplitude = data[column].to_numpy().reshape(-1, 1)
-        amplitude_scaled = self.scaler.fit_transform(amplitude)
-        return amplitude_scaled.reshape(-1)
+        if isinstance(columns, str):
+            columns = [columns]
+            
+        amplitude = data[columns].to_numpy()
+        
+        if train:
+            amplitude_scaled = self.scaler.fit_transform(amplitude)
+        else:
+            try:
+                amplitude_scaled = self.scaler.transform(amplitude)
+            except:
+                amplitude_scaled = self.scaler.fit_transform(amplitude)
+        
+        if len(columns) == 1:
+            return amplitude_scaled.reshape(-1)
+        return amplitude_scaled
 
     def create_sequences(self, data, input_window, output_window):
         """Create input-output sequences for training."""
         sequences = []
         L = len(data)
         for i in range(L - input_window - output_window + 1):
-            train_seq = np.append(data[i:i+input_window], output_window * [0])
-            train_label = data[i:i+input_window+output_window]
+            if data.ndim == 1:
+                train_seq = np.append(data[i:i+input_window], output_window * [0])
+                train_label = data[i:i+input_window+output_window]
+            else:
+                padding = np.zeros((output_window, data.shape[1]))
+                train_seq = np.vstack([data[i:i+input_window], padding])
+                train_label = data[i:i+input_window+output_window, 0] # Assume target is first column
             sequences.append((train_seq, train_label))
         return sequences
 
@@ -158,13 +203,40 @@ class TransAm(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src):
-        src = self.input_proj(src)
-        src = src.transpose(0, 1)
+        if hasattr(self, 'input_proj'):
+            src = self.input_proj(src)
+            src = src.transpose(0, 1)
+        else:
+            # Handle old models that didn't have input_proj and expected (S, N, E)
+            # If src is (N, S, E), we need to transpose it for the old style which expects (S, N, E)
+            if src.ndim == 3 and src.shape[0] != 1 and src.shape[1] == 1:
+                # likely already (S, N, E)
+                pass
+            else:
+                # assume (N, S, E)
+                src = src.transpose(0, 1)
+
         src = self.pos_encoder(src)
-        output = self.transformer_encoder(src)
+
+        # Handle old models that had src_mask and newer ones that don't
+        if hasattr(self, 'transformer_encoder'):
+            if hasattr(self, 'src_mask'):
+                if self.src_mask is None or self.src_mask.size(0) != len(src):
+                    device = src.device
+                    mask = self._generate_square_subsequent_mask(len(src)).to(device)
+                    self.src_mask = mask
+                output = self.transformer_encoder(src, self.src_mask)
+            else:
+                output = self.transformer_encoder(src)
+        
         output = self.decoder(output)
         output = output.transpose(0, 1)
         return output
+
+    def _generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
 
 # ---------------------- Trainer ----------------------
 
@@ -191,8 +263,13 @@ class Trainer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
@@ -225,8 +302,13 @@ class Trainer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
@@ -253,11 +335,20 @@ class Inferencer:
         self.device = device
         self.data_loader = data_loader
 
-    def predict(self, symbol, from_date, to_date, input_window, future_steps):
-        data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
-        processed_data = self.data_loader.preprocess_data(data)
-        input_seq = processed_data[-input_window:]
-        input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=['close'], data=None):
+        if data is None:
+            data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
+            if any(col in columns for col in ['rsi', 'ema_20', 'ema_50', 'macd', 'signal']):
+                data = self.data_loader.add_technical_indicators(data)
+        
+        processed_data = self.data_loader.preprocess_data(data, columns=columns)
+        
+        if processed_data.ndim == 1:
+            input_seq = processed_data[-input_window:]
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+        else:
+            input_seq = processed_data[-input_window:]
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)
         
         self.model.eval()
         predictions = []
@@ -266,11 +357,23 @@ class Inferencer:
                 output = self.model(input_tensor)
                 pred = output[:, -1, 0].item()
                 predictions.append(pred)
-                input_seq = np.append(input_seq[1:], pred)
-                input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+                
+                if processed_data.ndim == 1:
+                    input_seq = np.append(input_seq[1:], pred)
+                    input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+                else:
+                    new_row = input_seq[-1].copy()
+                    new_row[0] = pred
+                    input_seq = np.vstack([input_seq[1:], new_row])
+                    input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)
         
         predictions = np.array(predictions).reshape(-1, 1)
-        predictions = self.data_loader.scaler.inverse_transform(predictions)
+        if self.data_loader.scaler.n_features_in_ > 1:
+            dummy = np.zeros((len(predictions), self.data_loader.scaler.n_features_in_))
+            dummy[:, 0] = predictions.flatten()
+            predictions = self.data_loader.scaler.inverse_transform(dummy)[:, 0].reshape(-1, 1)
+        else:
+            predictions = self.data_loader.scaler.inverse_transform(predictions)
         
         last_date = pd.to_datetime(data.index[-1])
         future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
@@ -291,8 +394,13 @@ class Inferencer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
                 loss = criterion(outputs, targets)
