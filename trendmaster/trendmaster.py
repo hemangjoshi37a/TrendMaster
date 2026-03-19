@@ -94,6 +94,7 @@ class DataLoader:
         Returns the DataFrame with new columns, NaN rows dropped.
         """
         df = data.copy()
+        df.columns = [c.lower() for c in df.columns]
         
         # RSI (14-period)
         delta = df['close'].diff()
@@ -139,8 +140,11 @@ class DataLoader:
                     scaled = self.scalers[col].fit_transform(values)
                 else:
                     if col not in self.scalers:
-                        raise ValueError(f"Scaler for column '{col}' not fitted. Call with train=True first.")
-                    scaled = self.scalers[col].transform(values)
+                        # Fallback for old models or if not fitted
+                        self.scalers[col] = MinMaxScaler(feature_range=(-1, 1))
+                        scaled = self.scalers[col].fit_transform(values)
+                    else:
+                        scaled = self.scalers[col].transform(values)
                 result.append(scaled.reshape(-1))
             # Also keep the single-column scaler in sync with 'close'
             if 'close' in columns:
@@ -153,7 +157,10 @@ class DataLoader:
             if train:
                 amplitude_scaled = self.scaler.fit_transform(amplitude)
             else:
-                amplitude_scaled = self.scaler.transform(amplitude)
+                try:
+                    amplitude_scaled = self.scaler.transform(amplitude)
+                except:
+                    amplitude_scaled = self.scaler.fit_transform(amplitude)
             return amplitude_scaled.reshape(-1)
 
     def create_sequences(self, data, input_window, output_window):
@@ -161,8 +168,13 @@ class DataLoader:
         sequences = []
         L = len(data)
         for i in range(L - input_window - output_window + 1):
-            train_seq = np.append(data[i:i+input_window], output_window * [0])
-            train_label = data[i:i+input_window+output_window]
+            if data.ndim == 1:
+                train_seq = np.append(data[i:i+input_window], output_window * [0])
+                train_label = data[i:i+input_window+output_window]
+            else:
+                padding = np.zeros((output_window, data.shape[1]))
+                train_seq = np.vstack([data[i:i+input_window], padding])
+                train_label = data[i:i+input_window+output_window, 0] # Assume target is first column
             sequences.append((train_seq, train_label))
         return sequences
 
@@ -226,12 +238,33 @@ class TransAm(nn.Module):
             src = self.input_proj(src)
         # If not, it means the model was trained without input_proj (older version).
         # We assume the input dimensions are already correct for pos_encoder.
-        src = src.transpose(0, 1)
+        if src.ndim == 3 and src.shape[0] != 1 and src.shape[1] == 1:
+            # likely already (S, N, E)
+            pass
+        else:
+            # assume (N, S, E)
+            src = src.transpose(0, 1)
         src = self.pos_encoder(src)
-        output = self.transformer_encoder(src)
+
+        # Handle old models that had src_mask and newer ones that don't
+        if hasattr(self, 'transformer_encoder'):
+            if hasattr(self, 'src_mask'):
+                if self.src_mask is None or self.src_mask.size(0) != len(src):
+                    device = src.device
+                    mask = self._generate_square_subsequent_mask(len(src)).to(device)
+                    self.src_mask = mask
+                output = self.transformer_encoder(src, self.src_mask)
+            else:
+                output = self.transformer_encoder(src)
+        
         output = self.decoder(output)
         output = output.transpose(0, 1)
         return output
+
+    def _generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
 
 # ---------------------- Trainer ----------------------
 
@@ -258,8 +291,13 @@ class Trainer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
@@ -292,8 +330,13 @@ class Trainer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
@@ -339,18 +382,22 @@ class Inferencer:
             stock_data = data
         else:
             stock_data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
+            # Check if we need to add technical indicators if requested but not present
+            if columns and any(col in columns for col in ['rsi', 'ema_20', 'ema_50', 'macd', 'signal']) and not all(col in stock_data.columns for col in columns):
+                stock_data = self.data_loader.add_technical_indicators(stock_data)
         
         is_multi = columns is not None and len(columns) > 1
         
         if is_multi:
             processed_data = self.data_loader.preprocess_data(stock_data, columns=columns, train=False)
             real_seq = processed_data[-input_window:]  # shape: (input_window, num_features)
-            # Pad with zeros for future steps
+            # Pad with zeros for future steps (vectorized prediction mode)
             zero_pad = np.zeros((future_steps, len(columns)))
             input_seq = np.vstack([real_seq, zero_pad])
             input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)  # (1, seq_len, F)
         else:
-            processed_data = self.data_loader.preprocess_data(stock_data, train=False)
+            col = columns[0] if columns else 'close'
+            processed_data = self.data_loader.preprocess_data(stock_data, column=col, train=False)
             real_seq = processed_data[-input_window:]
             # Pad with zeros for future steps
             zero_pad = np.zeros(future_steps)
@@ -364,9 +411,18 @@ class Inferencer:
             predictions = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
         
         # Use the close scaler for inverse transform
-        close_scaler = self.data_loader.scalers.get('close', getattr(self.data_loader, 'scaler', None))
+        if is_multi:
+            close_scaler = self.data_loader.scalers.get('close')
+        else:
+            close_scaler = self.data_loader.scaler
+            
+        if close_scaler is None:
+             # Try fallback if not found
+             close_scaler = getattr(self.data_loader, 'scaler', None)
+             
         if close_scaler is None:
              raise ValueError("Scaler not found. Ensure train=True was called or Data loader initialized properly.")
+        
         predictions = close_scaler.inverse_transform(predictions)
         
         last_date = pd.to_datetime(stock_data.index[-1])
@@ -386,8 +442,13 @@ class Inferencer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
                 loss = criterion(outputs, targets)

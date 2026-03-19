@@ -89,6 +89,15 @@ def get_model(symbol: str):
                             module.norm_first = False
                 print(f"Successfully loaded whole module from {model_path}")
                 
+                # --- Fix for PyTorch version compatibility ---
+                for m in model.modules():
+                    if isinstance(m, nn.TransformerEncoderLayer):
+                        if not hasattr(m, "norm_first"):
+                            m.norm_first = False
+                        if not hasattr(m, "batch_first"):
+                            m.batch_first = False
+                # ----------------------------------------------
+                
             model.eval()
             models[symbol] = model
             return model
