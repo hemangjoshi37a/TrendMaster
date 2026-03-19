@@ -86,11 +86,24 @@ class DataLoader:
         data = self.kite.historical_data(tkn, from_date, to_date, interval)
         return pd.DataFrame(data)
 
-    def preprocess_data(self, data, column='close'):
+    def preprocess_data(self, data, column='close', fit_scaler=False):
         """Preprocess the data for model input."""
         amplitude = data[column].to_numpy().reshape(-1, 1)
-        amplitude_scaled = self.scaler.fit_transform(amplitude)
+        if fit_scaler:
+            amplitude_scaled = self.scaler.fit_transform(amplitude)
+        else:
+            amplitude_scaled = self.scaler.transform(amplitude)
         return amplitude_scaled.reshape(-1)
+
+    def save_scaler(self, filename='scaler.joblib'):
+        """Save the fitted scaler to a file."""
+        joblib.dump(self.scaler, filename)
+        print(f"Scaler saved to {filename}")
+
+    def load_scaler(self, filename='scaler.joblib'):
+        """Load the scaler from a file."""
+        self.scaler = joblib.load(filename)
+        print(f"Scaler loaded from {filename}")
 
     def create_sequences(self, data, input_window, output_window):
         """Create input-output sequences for training."""
@@ -115,11 +128,21 @@ class DataLoader:
     def prepare_data(self, symbol, from_date, to_date, input_window, output_window, train_test_split=0.8):
         """Prepare data for training and testing."""
         data = self.load_or_download_data(symbol, from_date, to_date)
-        processed_data = self.preprocess_data(data)
+        
+        # Fit scaler ONLY on the training portion to prevent data leakage
+        split_idx = int(len(data) * train_test_split)
+        train_data_raw = data.iloc[:split_idx]
+        
+        train_amplitude = train_data_raw['close'].to_numpy().reshape(-1, 1)
+        self.scaler.fit(train_amplitude)
+        
+        # Transform the whole dataset using the fitted scaler
+        processed_data = self.preprocess_data(data, fit_scaler=False)
         sequences = self.create_sequences(processed_data, input_window, output_window)
-        split_idx = int(len(sequences) * train_test_split)
-        train_data = sequences[:split_idx]
-        test_data = sequences[split_idx:]
+        
+        seq_split_idx = int(len(sequences) * train_test_split)
+        train_data = sequences[:seq_split_idx]
+        test_data = sequences[seq_split_idx:]
         return train_data, test_data
 
 # ---------------------- Model ----------------------
@@ -178,9 +201,11 @@ class Trainer:
         self.optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=0.95)
 
-    def train(self, train_data, val_data, epochs, batch_size):
+    def train(self, train_data, val_data, epochs, batch_size, patience=10):
         train_losses = []
         val_losses = []
+        best_val_loss = float('inf')
+        epochs_no_improve = 0
         
         for epoch in range(epochs):
             self.model.train()
@@ -211,6 +236,16 @@ class Trainer:
             print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.6f}, Val Loss: {val_loss:.6f}")
             
             self.scheduler.step()
+            
+            # Early stopping check
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= patience:
+                    print(f"Early stopping triggered after {epoch+1} epochs.")
+                    break
         
         plot_results(train_losses, val_losses)
         return train_losses, val_losses
@@ -255,7 +290,7 @@ class Inferencer:
 
     def predict(self, symbol, from_date, to_date, input_window, future_steps):
         data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
-        processed_data = self.data_loader.preprocess_data(data)
+        processed_data = self.data_loader.preprocess_data(data, fit_scaler=False)
         input_seq = processed_data[-input_window:]
         input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
         
@@ -283,7 +318,10 @@ class Inferencer:
     def evaluate(self, test_data, batch_size):
         self.model.eval()
         total_loss = 0
+        total_mae = 0
+        total_samples = 0
         criterion = torch.nn.MSELoss()
+        mae_criterion = torch.nn.L1Loss()
         
         with torch.no_grad():
             for i in range(0, len(test_data), batch_size):
@@ -296,11 +334,19 @@ class Inferencer:
                 
                 outputs = self.model(inputs)
                 loss = criterion(outputs, targets)
-                total_loss += loss.item()
+                mae_loss = mae_criterion(outputs, targets)
+                
+                batch_size_actual = inputs.size(0)
+                total_loss += loss.item() * batch_size_actual
+                total_mae += mae_loss.item() * batch_size_actual
+                total_samples += batch_size_actual
         
-        avg_loss = total_loss / (len(test_data) // batch_size + 1)
-        print(f"Test Loss: {avg_loss:.6f}")
-        return avg_loss
+        mse = total_loss / total_samples
+        rmse = math.sqrt(mse)
+        mae = total_mae / total_samples
+        
+        print(f"Test MSE: {mse:.6f}, RMSE: {rmse:.6f}, MAE: {mae:.6f}")
+        return mse
 
 # ---------------------- Package Metadata ----------------------
 
