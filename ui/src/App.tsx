@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import LineChart from './LineChart';
+import ErrorBoundary from './ErrorBoundary';
 
 interface Company {
   symbol: string;
@@ -13,12 +14,29 @@ interface PredictionData {
   dates: string[];
   prices: number[];
   prediction_start_index: number;
+  warning?: string;
 }
 
 interface RecentStock {
   symbol: string;
   price: number | null;
 }
+
+interface MarketIndex {
+  name: string;
+  price: number;
+  change_pct: number;
+}
+
+type TimeframePeriod = '1mo' | '3mo' | '6mo' | '1y' | 'max';
+
+const TIMEFRAME_MAP: { label: string; period: TimeframePeriod }[] = [
+  { label: '1M', period: '1mo' },
+  { label: '3M', period: '3mo' },
+  { label: '6M', period: '6mo' },
+  { label: '1Y', period: '1y' },
+  { label: 'MAX', period: 'max' },
+];
 
 function App() {
   const [query, setQuery] = useState<string>('');
@@ -31,15 +49,20 @@ function App() {
   const [recentStocks, setRecentStocks] = useState<RecentStock[]>([]);
   const [marketOpen, setMarketOpen] = useState<boolean>(true);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
-  
+  const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframePeriod>('1y');
+  const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
+  const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([]);
+  const [currentSymbol, setCurrentSymbol] = useState<string>('');
+
   const ws = useRef<WebSocket | null>(null);
   const isSelecting = useRef<boolean>(false);
+  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttempts = useRef<number>(0);
 
-  // Initialize recent stocks from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('recentStocks');
     if (saved) setRecentStocks(JSON.parse(saved));
-    
+
     const checkMarket = () => {
       const now = new Date();
       const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
@@ -52,10 +75,28 @@ function App() {
     };
     checkMarket();
     const interval = setInterval(checkMarket, 60000);
-    return () => clearInterval(interval);
+
+    fetchMarketOverview();
+    const marketInterval = setInterval(fetchMarketOverview, 60000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(marketInterval);
+    };
   }, []);
 
-  // Autocomplete search
+  const fetchMarketOverview = async () => {
+    try {
+      const res = await fetch('/api/market-overview');
+      if (res.ok) {
+        const data: MarketIndex[] = await res.json();
+        setMarketIndices(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch market overview:', e);
+    }
+  };
+
   useEffect(() => {
     if (isSelecting.current) {
       isSelecting.current = false;
@@ -65,7 +106,7 @@ function App() {
     if (query.length > 1) {
       const fetchSuggestions = async () => {
         try {
-          const res = await fetch(`http://localhost:8000/api/search?query=${query}`);
+          const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
           if (res.ok) {
             const data = await res.json();
             setSuggestions(data);
@@ -83,32 +124,56 @@ function App() {
     }
   }, [query]);
 
-  const connectWebSocket = (stockSymbol: string) => {
+  const connectWebSocket = useCallback((stockSymbol: string) => {
     if (ws.current) ws.current.close();
-    const socket = new WebSocket(`ws://localhost:8000/ws/ticks/${stockSymbol.toUpperCase()}`);
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.price) {
-        setLivePrice(prev => {
-          setPrevPrice(prev);
-          return data.price;
-        });
-      }
+    if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+    reconnectAttempts.current = 0;
+
+    const createConnection = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const socket = new WebSocket(`${protocol}//${host}/ws/ticks/${stockSymbol.toUpperCase()}`);
+
+      socket.onopen = () => {
+        setWsStatus('connected');
+        reconnectAttempts.current = 0;
+      };
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.price) {
+          setLivePrice(prev => {
+            setPrevPrice(prev);
+            return data.price;
+          });
+        }
+      };
+
+      socket.onclose = () => {
+        setWsStatus('reconnecting');
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        reconnectAttempts.current += 1;
+        reconnectTimeout.current = setTimeout(createConnection, delay);
+      };
+
+      socket.onerror = () => {
+        socket.close();
+      };
+
+      ws.current = socket;
     };
-    ws.current = socket;
-  };
 
-  const handleManualSearch = () => {
-    if (query.trim()) {
-      handleSelectCompany({ symbol: query.trim().toUpperCase(), name: "" });
-    }
-  };
+    createConnection();
+  }, []);
 
-  const handleSelectCompany = async (company: Company) => {
-    isSelecting.current = true;
-    setQuery(company.symbol);
-    setSuggestions([]);
-    setShowSuggestions(false);
+  useEffect(() => {
+    return () => {
+      if (ws.current) ws.current.close();
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+    };
+  }, []);
+
+  const fetchPrediction = useCallback(async (symbol: string, period: TimeframePeriod) => {
     setLoading(true);
     setError(null);
     setPrediction(null);
@@ -116,17 +181,18 @@ function App() {
     setPrevPrice(null);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/predict?stock_symbol=${company.symbol}`);
+      const response = await fetch(`/api/predict?stock_symbol=${encodeURIComponent(symbol)}&period=${period}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch prediction. Check if model is trained for " + company.symbol);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to fetch prediction for " + symbol);
       }
       const data: PredictionData = await response.json();
       setPrediction(data);
-      connectWebSocket(company.symbol);
-      
+      connectWebSocket(symbol);
+
       setRecentStocks(prev => {
-        const filtered = prev.filter(s => s.symbol !== company.symbol);
-        const updated = [{ symbol: company.symbol, price: null }, ...filtered].slice(0, 5);
+        const filtered = prev.filter(s => s.symbol !== symbol);
+        const updated = [{ symbol: symbol, price: null }, ...filtered].slice(0, 10);
         localStorage.setItem('recentStocks', JSON.stringify(updated));
         return updated;
       });
@@ -135,6 +201,35 @@ function App() {
     } finally {
       setLoading(false);
     }
+  }, [connectWebSocket]);
+
+  const handleManualSearch = () => {
+    if (query.trim()) {
+      const sym = query.trim().toUpperCase();
+      setCurrentSymbol(sym);
+      isSelecting.current = true;
+      setQuery(sym);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      fetchPrediction(sym, selectedTimeframe);
+    }
+  };
+
+  const handleSelectCompany = (company: Company | RecentStock) => {
+    isSelecting.current = true;
+    setQuery(company.symbol);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setCurrentSymbol(company.symbol);
+    fetchPrediction(company.symbol, selectedTimeframe);
+  };
+
+  const handleTimeframeChange = (period: TimeframePeriod) => {
+    if (loading) return;
+    setSelectedTimeframe(period);
+    if (currentSymbol) {
+      fetchPrediction(currentSymbol, period);
+    }
   };
 
   const priceChange = livePrice && prevPrice ? livePrice - prevPrice : 0;
@@ -142,29 +237,34 @@ function App() {
 
   return (
     <div className="App dark-theme">
+      {/* Top Navigation */}
       <nav className="navbar">
         <div className="brand">
-          <div className="logo">TrendMaster <span>PRO</span></div>
-          <div className="market-status">
-            <div className={`status-dot ${marketOpen ? '' : 'closed'}`}></div>
-            {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
+          <div className="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            TrendMaster <span>PRO</span>
           </div>
         </div>
 
         <div className="search-box">
           <div className="search-input-wrapper">
+            <div className="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
               onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
-              placeholder="Search Symbol (e.g. RELIANCE, TCS...)"
+              placeholder="Search markets, symbols (e.g. RELIANCE, TCS)..."
               autoComplete="off"
             />
-            <button className="search-btn" onClick={handleManualSearch}>
-              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            </button>
           </div>
           {showSuggestions && (
             <ul className="suggestions">
@@ -178,173 +278,220 @@ function App() {
           )}
         </div>
         
-        <div className="nav-actions">
-          <div className="user-icon" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>
-            A
+        <div className="brand">
+          <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
+            <span className="status-dot"></span>
+            {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
           </div>
         </div>
       </nav>
 
+      {/* Main Dashboard Layout */}
       <main className="dashboard" onClick={() => setShowSuggestions(false)}>
-        <div className="main-content">
-          {error && <div className="notification error">Error: {error}</div>}
-          
-          <div className="card">
-            {prediction ? (
-              <>
-                <div className="stock-header">
-                  <div className="stock-title">
-                    <h1>{prediction.company_name}</h1>
-                    <div className="stock-meta">
-                      <span className="ticker">{prediction.symbol}</span>
-                      <span className="label">NSE INDIA</span>
+        
+        {/* Left/Center Column - Chart & Table */}
+        <div className="main-column">
+          <ErrorBoundary>
+            <div className="chart-panel">
+              {prediction ? (
+                <>
+                  <div className="chart-header">
+                    <div className="stock-info">
+                      <div className="stock-symbol">
+                        {prediction.symbol}
+                        {wsStatus === 'connected' && (
+                          <span className="ws-status live"><span className="pulse-dot"></span> LIVE</span>
+                        )}
+                        {wsStatus === 'reconnecting' && (
+                          <span className="ws-status reconnecting">RECONNECTING...</span>
+                        )}
+                      </div>
+                      <div className="stock-name">{prediction.company_name}</div>
                     </div>
-                  </div>
-                  <div className="stock-price">
-                    <div className="price-row">
-                      <span className="current-price">₹{livePrice?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "---"}</span>
+                    <div className="stock-price-container">
+                      <div className="current-price">
+                        {livePrice ? livePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : prediction.prices[prediction.prediction_start_index - 1]?.toFixed(2) || "---"}
+                      </div>
                       {priceChange !== 0 && (
-                        <span className={`price-change ${priceChange >= 0 ? 'up' : 'down'}`}>
-                          {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePct.toFixed(2)}%)
-                        </span>
+                        <div className={`price-change ${priceChange >= 0 ? 'up' : 'down'}`}>
+                          {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)} ({Math.abs(priceChangePct).toFixed(2)}%)
+                        </div>
                       )}
                     </div>
-                    <span className="label">Real-time Data</span>
                   </div>
-                </div>
 
-                <div className="chart-controls">
-                  <div className="timeframes">
-                    <button className="tf-btn active">1D</button>
-                    <button className="tf-btn">5D</button>
-                    <button className="tf-btn">1M</button>
-                    <button className="tf-btn">1Y</button>
-                    <button className="tf-btn">MAX</button>
+                  <div className="chart-toolbar">
+                    <div className="timeframe-selector">
+                      {TIMEFRAME_MAP.map(tf => (
+                        <button
+                          key={tf.period}
+                          className={`tf-btn ${selectedTimeframe === tf.period ? 'active' : ''}`}
+                          onClick={() => handleTimeframeChange(tf.period)}
+                          disabled={loading}
+                        >
+                          {tf.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="chart-legend">
+                      <div className="legend-item">
+                        <div className="legend-color" style={{ background: '#2962FF' }}></div>
+                        Historical Data
+                      </div>
+                      <div className="legend-item">
+                        <div className="legend-color" style={{ background: '#F23645' }}></div>
+                        Transformer Forecast
+                      </div>
+                    </div>
                   </div>
-                  <div className="chart-legend-simple">
-                    <span style={{ color: '#2962ff', marginRight: '15px' }}>● Historical</span>
-                    <span style={{ color: '#f23645' }}>--- AI Prediction</span>
-                  </div>
-                </div>
 
-                <div className="chart-wrapper">
-                  <LineChart data={prediction} />
-                </div>
-              </>
-            ) : (
-              <div className="empty-state">
-                {loading ? (
-                  <div className="loader">
-                    <svg width="64" height="64" viewBox="0 0 24 24"><path fill="var(--accent)" d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/></svg>
-                    <p>Deep Learning Model Analyzing {query}...</p>
+                  <div className="chart-container-wrapper">
+                    <LineChart data={prediction} />
                   </div>
-                ) : (
-                  <>
-                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <h2>Welcome to TrendMaster PRO</h2>
-                    <p>Search for any NSE stock to see Transformer-based future predictions</p>
-                  </>
-                )}
+                </>
+              ) : (
+                <div className="empty-state">
+                  {loading ? (
+                    <div className="loader">
+                      <div className="loader-spinner"></div>
+                      <p>Running Transformer Model on {query}...</p>
+                    </div>
+                  ) : error ? (
+                    <>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="1.5">
+                        <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      <h3>Analysis Failed</h3>
+                      <p>{error}</p>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
+                      </svg>
+                      <h3>Terminal Ready</h3>
+                      <p>Search for an NSE symbol to view AI-powered forecasts.</p>
+                      
+                      <div className="recent-list" style={{ marginTop: '24px', justifyContent: 'center' }}>
+                        {recentStocks.slice(0, 5).map(s => (
+                          <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                            {s.symbol}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Price Table Panel */}
+            {prediction && (
+              <div className="table-panel">
+                <div className="panel-title">Forecast Data</div>
+                <div className="table-wrapper">
+                  <table className="prediction-grid">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Target Price</th>
+                        <th>Change</th>
+                        <th>AI Signal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prediction.dates.slice(prediction.prediction_start_index, prediction.prediction_start_index + 10).map((date, i) => {
+                        const idx = prediction.prediction_start_index + i;
+                        const price = prediction.prices[idx];
+                        const prevPriceVal = prediction.prices[idx - 1];
+                        if (price === undefined || prevPriceVal === undefined) return null;
+                        const change = price - prevPriceVal;
+                        const changePct = (change / prevPriceVal) * 100;
+
+                        return (
+                          <tr key={date}>
+                            <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                            <td style={{ color: 'var(--text-bright)' }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                              {change >= 0 ? '+' : ''}{changePct.toFixed(2)}%
+                            </td>
+                            <td>
+                              <span className={`trend-badge ${change >= 0 ? 'bullish' : 'bearish'}`}>
+                                {change >= 0 ? 'BULL' : 'BEAR'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
-
-          {prediction && (
-            <div className="card analysis-section">
-              <h2>Transformer Prediction Analysis</h2>
-              <table className="prediction-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Predicted Price</th>
-                    <th>Expected Change</th>
-                    <th>Trend</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prediction.dates.slice(prediction.prediction_start_index, prediction.prediction_start_index + 10).map((date, i) => {
-                    const idx = prediction.prediction_start_index + i;
-                    const price = prediction.prices[idx];
-                    const prevPriceVal = prediction.prices[idx - 1];
-                    const change = price - prevPriceVal;
-                    const changePct = (change / prevPriceVal) * 100;
-                    
-                    return (
-                      <tr key={date}>
-                        <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                        <td style={{ fontWeight: 700 }}>₹{price.toFixed(2)}</td>
-                        <td className={`change-cell ${change >= 0 ? 'up' : 'down'}`}>
-                          {change >= 0 ? '▲' : '▼'} {Math.abs(changePct).toFixed(2)}%
-                        </td>
-                        <td>
-                          <span style={{ 
-                            padding: '4px 10px', 
-                            borderRadius: '4px', 
-                            fontSize: '0.8rem',
-                            background: change >= 0 ? 'rgba(8, 153, 129, 0.1)' : 'rgba(242, 54, 69, 0.1)',
-                            color: change >= 0 ? 'var(--success)' : 'var(--error)'
-                          }}>
-                            {change >= 0 ? 'BULLISH' : 'BEARISH'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          </ErrorBoundary>
         </div>
 
+        {/* Right Sidebar */}
         <div className="sidebar">
-          <div className="card sidebar-section">
-            <h3>AI Insight</h3>
-            <div style={{ padding: '10px 0' }}>
-              <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--text-muted)' }}>
-                Our Transformer model uses multi-head attention to analyze historical price patterns and technical indicators.
+          {prediction && (
+            <div className="widget">
+              <div className="widget-title">Model Specifications</div>
+              <p className="ai-summary">
+                TransAm architecture analyzing attention interactions across <b>{selectedTimeframe.toUpperCase()}</b> historical patterns.
               </p>
-              <div className="stat-item">
-                <span>Model Confidence</span>
-                <span style={{ color: 'var(--success)', fontWeight: 700 }}>HIGH</span>
+              <div className="stat-row">
+                <span className="stat-label">Model Type</span>
+                <span className="stat-value">Transformer (Multi-Head)</span>
               </div>
-              <div className="stat-item">
-                <span>Prediction Steps</span>
-                <span>10 Days</span>
+              <div className="stat-row">
+                <span className="stat-label">Features Used</span>
+                <span className="stat-value">Price, Volume, Tech Ind.</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Prediction Horizon</span>
+                <span className="stat-value">10 Trading Days</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label" style={{ marginTop: '12px' }}>Confidence Score</span>
+                <div style={{ width: '100px', height: '6px', background: 'var(--border)', borderRadius: '3px', marginTop: '16px', overflow: 'hidden' }}>
+                  <div style={{ width: '85%', height: '100%', background: 'var(--success)' }}></div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="card sidebar-section">
-            <h3>Recent Searches</h3>
-            <div className="recent-list">
-              {recentStocks.length > 0 ? recentStocks.map(s => (
-                <div key={s.symbol} className="recent-item" onClick={() => handleSelectCompany({ symbol: s.symbol, name: "" })}>
-                  <span className="sym">{s.symbol}</span>
-                  <span className="price">VIEW</span>
+          <div className="widget">
+            <div className="widget-title">Market Overview</div>
+            <div className="indices-list">
+              {marketIndices.length > 0 ? marketIndices.map(idx => (
+                <div className="index-row" key={idx.name}>
+                  <span className="index-name">{idx.name}</span>
+                  <div className="index-values">
+                    <span className="index-price">{idx.price.toLocaleString('en-IN')}</span>
+                    <span className={`index-change ${idx.change_pct >= 0 ? 'up' : 'down'}`}>
+                      {idx.change_pct >= 0 ? '+' : ''}{idx.change_pct.toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
               )) : (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>No recent stocks</p>
+                <div className="index-row"><span className="index-name" style={{ color: 'var(--text-muted)' }}>Loading market data...</span></div>
+              )}
+            </div>
+          </div>
+          
+          <div className="widget">
+            <div className="widget-title">Recent History</div>
+            <div className="recent-list">
+              {recentStocks.length > 0 ? recentStocks.map(s => (
+                <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                  {s.symbol}
+                </div>
+              )) : (
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No recent searches</span>
               )}
             </div>
           </div>
 
-          <div className="card sidebar-section" style={{ flex: 1 }}>
-            <h3>Market Overview</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
-              <div className="stat-item">
-                <span>NIFTY 50</span>
-                <span style={{ color: 'var(--success)' }}>+0.42%</span>
-              </div>
-              <div className="stat-item">
-                <span>SENSEX</span>
-                <span style={{ color: 'var(--success)' }}>+0.38%</span>
-              </div>
-              <div className="stat-item">
-                <span>Bank Nifty</span>
-                <span style={{ color: 'var(--error)' }}>-0.15%</span>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
     </div>

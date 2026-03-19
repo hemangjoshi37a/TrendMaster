@@ -5,14 +5,16 @@ import numpy as np
 import json
 import asyncio
 import os
+import re
+import time
 import torch
 import torch.nn as nn
 import yfinance as yf
-from typing import List, Dict
+from typing import List, Dict, Optional
 from contextlib import asynccontextmanager
 
 # Import from our library
-from trendmaster.trendmaster import TransAm, Inferencer, DataLoader
+from trendmaster.trendmaster import TransAm, PositionalEncoding, Inferencer, DataLoader
 
 # --- Path Configuration ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +26,10 @@ INSTRUMENTS_FILE = os.path.join(BASE_DIR, "Inference", "all_inst.xlsx")
 device = torch.device("cpu")
 symbol_to_name = {}
 data_loader = DataLoader() # For preprocessing and scaling
+
+# --- Prediction Cache (TTL = 300s) ---
+prediction_cache: Dict[str, dict] = {}  # {"SYMBOL_period": {"data": ..., "timestamp": ...}}
+CACHE_TTL = 300  # 5 minutes
 
 # --- Model Management ---
 models: Dict[str, nn.Module] = {}
@@ -47,6 +53,12 @@ def get_model(symbol: str):
             
         try:
             print(f"Attempting to load model from {model_path}")
+            
+            # Monkeypatch PyTorch's _LinearWithBias for older torch versions
+            import torch.nn.modules.linear
+            if not hasattr(torch.nn.modules.linear, '_LinearWithBias'):
+                torch.nn.modules.linear._LinearWithBias = torch.nn.modules.linear.Linear
+                
             # We need PositionalEncoding and TransAm in __main__
             import __main__
             from trendmaster.trendmaster import TransAm, PositionalEncoding
@@ -70,6 +82,11 @@ def get_model(symbol: str):
             else:
                 # It's a whole module
                 model = checkpoint
+                # Patch missing attributes for older torch versions
+                for module in model.modules():
+                    if isinstance(module, torch.nn.TransformerEncoderLayer):
+                        if not hasattr(module, 'norm_first'):
+                            module.norm_first = False
                 print(f"Successfully loaded whole module from {model_path}")
                 
             model.eval()
@@ -114,13 +131,13 @@ app.add_middleware(
 )
 
 # --- Prediction Logic ---
-def get_real_prediction(symbol, input_window=30, future_steps=10):
-    print(f"--- Starting prediction for {symbol} ---")
+def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
+    print(f"--- Starting prediction for {symbol} (period={period}) ---")
     yf_symbol = f"{symbol}.NS"
     ticker = yf.Ticker(yf_symbol)
     
     try:
-        df = ticker.history(period="1y")
+        df = ticker.history(period=period)
     except Exception as e:
         print(f"yfinance error for {symbol}: {e}")
         raise HTTPException(status_code=404, detail=f"Failed to fetch data for {symbol} from Yahoo Finance.")
@@ -250,20 +267,71 @@ def search_companies(query: str = Query(..., min_length=1)):
     return results
 
 @app.get("/api/predict")
-def predict_stock(stock_symbol: str):
-    symbol_upper = stock_symbol.upper()
-    # If not in our NSE list, try searching yfinance directly as fallback
+def predict_stock(
+    stock_symbol: str,
+    period: str = Query("1y", regex="^(1mo|3mo|6mo|1y|2y|5y|max)$"),
+    no_cache: bool = Query(False)
+):
+    # Input validation
+    symbol_upper = stock_symbol.strip().upper()
+    if not re.match(r'^[A-Z0-9&_.-]{1,20}$', symbol_upper):
+        raise HTTPException(status_code=400, detail="Invalid stock symbol. Use alphanumeric characters only, max 20 chars.")
+    
+    # Check cache
+    cache_key = f"{symbol_upper}_{period}"
+    if not no_cache and cache_key in prediction_cache:
+        cached = prediction_cache[cache_key]
+        if time.time() - cached["timestamp"] < CACHE_TTL:
+            print(f"Cache hit for {cache_key}")
+            return cached["data"]
+    
     company_name = symbol_to_name.get(symbol_upper, symbol_upper)
     
     try:
-        data = get_real_prediction(symbol_upper)
-        return {
+        data = get_real_prediction(symbol_upper, period=period)
+        result = {
             "symbol": symbol_upper,
             "company_name": company_name,
             **data
         }
+        # Store in cache
+        prediction_cache[cache_key] = {"data": result, "timestamp": time.time()}
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/market-overview")
+def market_overview():
+    """Fetch real-time market indices."""
+    indices = {
+        "NIFTY 50": "^NSEI",
+        "SENSEX": "^BSESN",
+        "Bank Nifty": "^NSEBANK"
+    }
+    result = []
+    for name, yf_symbol in indices.items():
+        try:
+            ticker = yf.Ticker(yf_symbol)
+            hist = ticker.history(period="2d")
+            if len(hist) >= 2:
+                current = hist['Close'].iloc[-1]
+                prev = hist['Close'].iloc[-2]
+                change_pct = ((current - prev) / prev) * 100
+                result.append({
+                    "name": name,
+                    "price": round(float(current), 2),
+                    "change_pct": round(float(change_pct), 2)
+                })
+            elif len(hist) == 1:
+                result.append({
+                    "name": name,
+                    "price": round(float(hist['Close'].iloc[-1]), 2),
+                    "change_pct": 0.0
+                })
+        except Exception as e:
+            print(f"Error fetching {name}: {e}")
+            result.append({"name": name, "price": 0, "change_pct": 0.0})
+    return result
 
 @app.websocket("/ws/ticks/{symbol}")
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
