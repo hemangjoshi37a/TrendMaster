@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "C:\Users\nitya\Desktop\18\test.py", line 10, in <module>
+    torch.load('c:/Users/nitya/Desktop/18/Inference/best_model_multi10.pt', map_location='cpu', weights_only=False)
+  File "C:\Users\nitya\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\serialization.py", line 1549, in load
+    return _load(
+           ^^^^^^
+  File "C:\Users\nitya\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\serialization.py", line 2143, in _load
+    result = unpickler.load()
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\nitya\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\serialization.py", line 2132, in find_class
+    return super().find_class(mod_name, name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Can't get attribute '_LinearWithBias' on <module 'torch.nn.modules.linear' from 'C:\\Users\\nitya\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\torch\\nn\\modules\\linear.py'>

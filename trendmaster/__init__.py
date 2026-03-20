@@ -2,6 +2,7 @@
 
 from .trendmaster import (
     DataLoader,
+    PositionalEncoding,
     TransAm,
     Trainer,
     Inferencer,
@@ -12,6 +13,7 @@ from .trendmaster import (
 
 __all__ = [
     'DataLoader',
+    'PositionalEncoding',
     'TransAm',
     'Trainer',
     'Inferencer',
@@ -19,5 +21,6 @@ __all__ = [
     'plot_results',
     'plot_predictions'
 ]
+
 
 __version__ = '0.2.3'

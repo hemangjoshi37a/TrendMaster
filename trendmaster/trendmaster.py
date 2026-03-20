@@ -49,6 +49,7 @@ class DataLoader:
     def __init__(self):
         self.kite = None
         self.scaler = MinMaxScaler(feature_range=(-1, 1))
+        self.scalers = {}  # Per-column scalers for multi-feature mode
         self.instruments_cache = {}
 
     def authenticate(self, user_id=None, password=None, twofa=None):
@@ -86,6 +87,83 @@ class DataLoader:
         data = self.kite.historical_data(tkn, from_date, to_date, interval)
         return pd.DataFrame(data)
 
+<<<<<<< feature/new
+    def add_technical_indicators(self, data):
+        """Add technical indicators to the DataFrame.
+        
+        Computes RSI (14), EMA-20, EMA-50, MACD, and Signal line.
+        Returns the DataFrame with new columns, NaN rows dropped.
+        """
+        df = data.copy()
+        df.columns = [c.lower() for c in df.columns]
+        
+        # RSI (14-period)
+        delta = df['close'].diff()
+        gain = delta.where(delta > 0, 0.0)
+        loss = -delta.where(delta < 0, 0.0)
+        avg_gain = gain.rolling(window=14, min_periods=1).mean()
+        avg_loss = loss.rolling(window=14, min_periods=1).mean()
+        rs = avg_gain / avg_loss.replace(0, np.finfo(float).eps)
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        # EMA-20 and EMA-50
+        df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean()
+        df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+        
+        # MACD and Signal
+        ema_12 = df['close'].ewm(span=12, adjust=False).mean()
+        ema_26 = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd'] = ema_12 - ema_26
+        df['signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+        
+        df.dropna(inplace=True) 
+        return df
+
+    def preprocess_data(self, data, column='close', columns=None, train=True):
+        """Preprocess the data for model input.
+        
+        Args:
+            data: DataFrame with stock data.
+            column: Single column name for single-feature mode.
+            columns: List of column names for multi-feature mode.
+            train: If True, fit the scaler(s) on data. If False, use already-fitted scalers.
+        
+        Returns:
+            Scaled data as numpy array. Shape is (N,) for single-feature, (N, F) for multi-feature.
+        """
+        if columns and len(columns) > 1:
+            # Multi-feature mode
+            result = []
+            for col in columns:
+                values = data[col].to_numpy().reshape(-1, 1)
+                if train:
+                    self.scalers[col] = MinMaxScaler(feature_range=(-1, 1))
+                    scaled = self.scalers[col].fit_transform(values)
+                else:
+                    if col not in self.scalers:
+                        # Fallback for old models or if not fitted
+                        self.scalers[col] = MinMaxScaler(feature_range=(-1, 1))
+                        scaled = self.scalers[col].fit_transform(values)
+                    else:
+                        scaled = self.scalers[col].transform(values)
+                result.append(scaled.reshape(-1))
+            # Also keep the single-column scaler in sync with 'close'
+            if 'close' in columns:
+                self.scaler = self.scalers['close']
+            return np.column_stack(result)
+        else:
+            # Single-feature mode (backward compatible)
+            col = columns[0] if columns else column
+            amplitude = data[col].to_numpy().reshape(-1, 1)
+            if train:
+                amplitude_scaled = self.scaler.fit_transform(amplitude)
+            else:
+                try:
+                    amplitude_scaled = self.scaler.transform(amplitude)
+                except:
+                    amplitude_scaled = self.scaler.fit_transform(amplitude)
+            return amplitude_scaled.reshape(-1)
+=======
     def preprocess_data(self, data, column='close', fit_scaler=False):
         """Preprocess the data for model input."""
         amplitude = data[column].to_numpy().reshape(-1, 1)
@@ -94,6 +172,7 @@ class DataLoader:
         else:
             amplitude_scaled = self.scaler.transform(amplitude)
         return amplitude_scaled.reshape(-1)
+>>>>>>> main
 
     def save_scaler(self, filename='scaler.joblib'):
         """Save the fitted scaler to a file."""
@@ -110,8 +189,13 @@ class DataLoader:
         sequences = []
         L = len(data)
         for i in range(L - input_window - output_window + 1):
-            train_seq = np.append(data[i:i+input_window], output_window * [0])
-            train_label = data[i:i+input_window+output_window]
+            if data.ndim == 1:
+                train_seq = np.append(data[i:i+input_window], output_window * [0])
+                train_label = data[i:i+input_window+output_window]
+            else:
+                padding = np.zeros((output_window, data.shape[1]))
+                train_seq = np.vstack([data[i:i+input_window], padding])
+                train_label = data[i:i+input_window+output_window, 0] # Assume target is first column
             sequences.append((train_seq, train_label))
         return sequences
 
@@ -181,13 +265,37 @@ class TransAm(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src):
-        src = self.input_proj(src)
-        src = src.transpose(0, 1)
+        if hasattr(self, 'input_proj'):
+            src = self.input_proj(src)
+        # If not, it means the model was trained without input_proj (older version).
+        # We assume the input dimensions are already correct for pos_encoder.
+        if src.ndim == 3 and src.shape[0] != 1 and src.shape[1] == 1:
+            # likely already (S, N, E)
+            pass
+        else:
+            # assume (N, S, E)
+            src = src.transpose(0, 1)
         src = self.pos_encoder(src)
-        output = self.transformer_encoder(src)
+
+        # Handle old models that had src_mask and newer ones that don't
+        if hasattr(self, 'transformer_encoder'):
+            if hasattr(self, 'src_mask'):
+                if self.src_mask is None or self.src_mask.size(0) != len(src):
+                    device = src.device
+                    mask = self._generate_square_subsequent_mask(len(src)).to(device)
+                    self.src_mask = mask
+                output = self.transformer_encoder(src, self.src_mask)
+            else:
+                output = self.transformer_encoder(src)
+        
         output = self.decoder(output)
         output = output.transpose(0, 1)
         return output
+
+    def _generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
 
 # ---------------------- Trainer ----------------------
 
@@ -216,8 +324,13 @@ class Trainer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
@@ -260,8 +373,13 @@ class Trainer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
@@ -288,30 +406,79 @@ class Inferencer:
         self.device = device
         self.data_loader = data_loader
 
+<<<<<<< feature/new
+    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None):
+        """Make predictions for a stock.
+        
+        Args:
+            symbol: Stock symbol name.
+            from_date: Start date for historical data.
+            to_date: End date for historical data.
+            input_window: Number of time steps to use as input.
+            future_steps: Number of future steps to predict.
+            columns: List of feature column names for multi-feature mode.
+            data: Pre-fetched DataFrame to use instead of downloading.
+        
+        Returns:
+            DataFrame with 'Date' and 'Predicted_Close' columns.
+        """
+        if data is not None:
+            stock_data = data
+        else:
+            stock_data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
+            # Check if we need to add technical indicators if requested but not present
+            if columns and any(col in columns for col in ['rsi', 'ema_20', 'ema_50', 'macd', 'signal']) and not all(col in stock_data.columns for col in columns):
+                stock_data = self.data_loader.add_technical_indicators(stock_data)
+        
+        is_multi = columns is not None and len(columns) > 1
+        
+        if is_multi:
+            processed_data = self.data_loader.preprocess_data(stock_data, columns=columns, train=False)
+            real_seq = processed_data[-input_window:]  # shape: (input_window, num_features)
+            # Pad with zeros for future steps (vectorized prediction mode)
+            zero_pad = np.zeros((future_steps, len(columns)))
+            input_seq = np.vstack([real_seq, zero_pad])
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)  # (1, seq_len, F)
+        else:
+            col = columns[0] if columns else 'close'
+            processed_data = self.data_loader.preprocess_data(stock_data, column=col, train=False)
+            real_seq = processed_data[-input_window:]
+            # Pad with zeros for future steps
+            zero_pad = np.zeros(future_steps)
+            input_seq = np.concatenate([real_seq, zero_pad])
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+=======
     def predict(self, symbol, from_date, to_date, input_window, future_steps):
         data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
         processed_data = self.data_loader.preprocess_data(data, fit_scaler=False)
         input_seq = processed_data[-input_window:]
         input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+>>>>>>> main
         
         self.model.eval()
-        predictions = []
         with torch.no_grad():
-            for _ in range(future_steps):
-                output = self.model(input_tensor)
-                pred = output[:, -1, 0].item()
-                predictions.append(pred)
-                input_seq = np.append(input_seq[1:], pred)
-                input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+            output = self.model(input_tensor)
+            # The model outputs the entire sequence. The future predictions are the last `future_steps` elements.
+            predictions = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
         
-        predictions = np.array(predictions).reshape(-1, 1)
-        predictions = self.data_loader.scaler.inverse_transform(predictions)
+        # Use the close scaler for inverse transform
+        if is_multi:
+            close_scaler = self.data_loader.scalers.get('close')
+        else:
+            close_scaler = self.data_loader.scaler
+            
+        if close_scaler is None:
+             # Try fallback if not found
+             close_scaler = getattr(self.data_loader, 'scaler', None)
+             
+        if close_scaler is None:
+             raise ValueError("Scaler not found. Ensure train=True was called or Data loader initialized properly.")
         
-        last_date = pd.to_datetime(data.index[-1])
-        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
+        predictions = close_scaler.inverse_transform(predictions)
+        
+        last_date = pd.to_datetime(stock_data.index[-1])
+        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
         predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions.flatten()})
-        
-        plot_predictions(data['close'], predictions_df)
         
         return predictions_df
 
@@ -329,8 +496,13 @@ class Inferencer:
                 input_sequences = np.array([item[0] for item in batch])
                 target_sequences = np.array([item[1] for item in batch])
                 
-                inputs = torch.FloatTensor(input_sequences).unsqueeze(-1).to(self.device)
-                targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
+                inputs = torch.FloatTensor(input_sequences).to(self.device)
+                if inputs.ndim == 2:
+                    inputs = inputs.unsqueeze(-1)
+                
+                targets = torch.FloatTensor(target_sequences).to(self.device)
+                if targets.ndim == 2:
+                    targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
                 loss = criterion(outputs, targets)
@@ -352,6 +524,7 @@ class Inferencer:
 
 __all__ = [
     'DataLoader',
+    'PositionalEncoding',
     'TransAm',
     'Trainer',
     'Inferencer',
