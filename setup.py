@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="trendmaster",
-    version="0.2.3",
+    version="0.3.0",
     author="Hemang Joshi",
     author_email="hemangjoshi37a@gmail.com",
     description="Stock Price Prediction using Transformer Deep Learning Architecture",
@@ -34,10 +34,9 @@ setup(
         "joblib",
         "scikit-learn",
         "jugaad-trader",
+        "streamlit",
+        "pyotp",
+        "plotly",
+        "python-dotenv",
     ],
-    entry_points={
-        "console_scripts": [
-            "trendmaster=trendmaster.cli:main",
-        ],
-    },
 )

@@ -5,5 +5,9 @@ transformers
 matplotlib
 tqdm
 joblib
-sklearn
+scikit-learn
 jugaad-trader
+streamlit
+pyotp
+plotly
+python-dotenv

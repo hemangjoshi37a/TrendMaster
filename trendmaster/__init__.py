@@ -8,7 +8,7 @@ from trendmaster.data import DataLoader
 from trendmaster.models import TransAm, PositionalEncoding
 from trendmaster.training import Trainer, plot_results
 from trendmaster.inference import Inferencer, plot_predictions
-from trendmaster.utils import set_seed, logger
+from trendmaster.utils import logger
 
 # Re-export for backward compatibility
 __all__ = [
