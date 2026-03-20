@@ -9,7 +9,10 @@ from tqdm import tqdm
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 import os
-from jugaad_trader import Zerodha
+
+# jugaad_trader is an optional broker dependency (Zerodha-only).
+# It is imported lazily inside authenticate() so the library can be used
+# without a Zerodha account (e.g., with yfinance data in the API server).
 
 # ---------------------- Utils ----------------------
 
@@ -49,10 +52,23 @@ class DataLoader:
     def __init__(self):
         self.kite = None
         self.scaler = MinMaxScaler(feature_range=(-1, 1))
+        self.scalers = {}  # Per-column scalers for multi-feature mode
         self.instruments_cache = {}
 
     def authenticate(self, user_id=None, password=None, twofa=None):
-        """Authenticate with Zerodha."""
+        """Authenticate with Zerodha.
+        
+        Requires the optional `jugaad-trader` package:
+            pip install jugaad-trader
+        """
+        try:
+            from jugaad_trader import Zerodha
+        except ImportError as exc:
+            raise ImportError(
+                "jugaad-trader is required for Zerodha authentication. "
+                "Install it with: pip install jugaad-trader"
+            ) from exc
+
         if not all([user_id, password, twofa]):
             user_id = input("Zerodha User ID: ")
             password = input("Zerodha Password: ")
@@ -86,11 +102,74 @@ class DataLoader:
         data = self.kite.historical_data(tkn, from_date, to_date, interval)
         return pd.DataFrame(data)
 
-    def preprocess_data(self, data, column='close'):
-        """Preprocess the data for model input."""
-        amplitude = data[column].to_numpy().reshape(-1, 1)
-        amplitude_scaled = self.scaler.fit_transform(amplitude)
-        return amplitude_scaled.reshape(-1)
+    def add_technical_indicators(self, data):
+        """Add technical indicators to the DataFrame.
+        
+        Computes RSI (14), EMA-20, EMA-50, MACD, and Signal line.
+        Returns the DataFrame with new columns, NaN rows dropped.
+        """
+        df = data.copy()
+        
+        # RSI (14-period)
+        delta = df['close'].diff()
+        gain = delta.where(delta > 0, 0.0)
+        loss = -delta.where(delta < 0, 0.0)
+        avg_gain = gain.rolling(window=14, min_periods=1).mean()
+        avg_loss = loss.rolling(window=14, min_periods=1).mean()
+        rs = avg_gain / avg_loss.replace(0, np.finfo(float).eps)
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        # EMA-20 and EMA-50
+        df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean()
+        df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+        
+        # MACD and Signal
+        ema_12 = df['close'].ewm(span=12, adjust=False).mean()
+        ema_26 = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd'] = ema_12 - ema_26
+        df['signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+        
+        df.dropna(inplace=True) 
+        return df
+
+    def preprocess_data(self, data, column='close', columns=None, train=True):
+        """Preprocess the data for model input.
+        
+        Args:
+            data: DataFrame with stock data.
+            column: Single column name for single-feature mode.
+            columns: List of column names for multi-feature mode.
+            train: If True, fit the scaler(s) on data. If False, use already-fitted scalers.
+        
+        Returns:
+            Scaled data as numpy array. Shape is (N,) for single-feature, (N, F) for multi-feature.
+        """
+        if columns and len(columns) > 1:
+            # Multi-feature mode
+            result = []
+            for col in columns:
+                values = data[col].to_numpy().reshape(-1, 1)
+                if train:
+                    self.scalers[col] = MinMaxScaler(feature_range=(-1, 1))
+                    scaled = self.scalers[col].fit_transform(values)
+                else:
+                    if col not in self.scalers:
+                        raise ValueError(f"Scaler for column '{col}' not fitted. Call with train=True first.")
+                    scaled = self.scalers[col].transform(values)
+                result.append(scaled.reshape(-1))
+            # Also keep the single-column scaler in sync with 'close'
+            if 'close' in columns:
+                self.scaler = self.scalers['close']
+            return np.column_stack(result)
+        else:
+            # Single-feature mode (backward compatible)
+            col = columns[0] if columns else column
+            amplitude = data[col].to_numpy().reshape(-1, 1)
+            if train:
+                amplitude_scaled = self.scaler.fit_transform(amplitude)
+            else:
+                amplitude_scaled = self.scaler.transform(amplitude)
+            return amplitude_scaled.reshape(-1)
 
     def create_sequences(self, data, input_window, output_window):
         """Create input-output sequences for training."""
@@ -158,7 +237,10 @@ class TransAm(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src):
-        src = self.input_proj(src)
+        if hasattr(self, 'input_proj'):
+            src = self.input_proj(src)
+        # If not, it means the model was trained without input_proj (older version).
+        # We assume the input dimensions are already correct for pos_encoder.
         src = src.transpose(0, 1)
         src = self.pos_encoder(src)
         output = self.transformer_encoder(src)
@@ -253,30 +335,58 @@ class Inferencer:
         self.device = device
         self.data_loader = data_loader
 
-    def predict(self, symbol, from_date, to_date, input_window, future_steps):
-        data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
-        processed_data = self.data_loader.preprocess_data(data)
-        input_seq = processed_data[-input_window:]
-        input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None):
+        """Make predictions for a stock.
+        
+        Args:
+            symbol: Stock symbol name.
+            from_date: Start date for historical data.
+            to_date: End date for historical data.
+            input_window: Number of time steps to use as input.
+            future_steps: Number of future steps to predict.
+            columns: List of feature column names for multi-feature mode.
+            data: Pre-fetched DataFrame to use instead of downloading.
+        
+        Returns:
+            DataFrame with 'Date' and 'Predicted_Close' columns.
+        """
+        if data is not None:
+            stock_data = data
+        else:
+            stock_data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
+        
+        is_multi = columns is not None and len(columns) > 1
+        
+        if is_multi:
+            processed_data = self.data_loader.preprocess_data(stock_data, columns=columns, train=False)
+            real_seq = processed_data[-input_window:]  # shape: (input_window, num_features)
+            # Pad with zeros for future steps
+            zero_pad = np.zeros((future_steps, len(columns)))
+            input_seq = np.vstack([real_seq, zero_pad])
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)  # (1, seq_len, F)
+        else:
+            processed_data = self.data_loader.preprocess_data(stock_data, train=False)
+            real_seq = processed_data[-input_window:]
+            # Pad with zeros for future steps
+            zero_pad = np.zeros(future_steps)
+            input_seq = np.concatenate([real_seq, zero_pad])
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
         
         self.model.eval()
-        predictions = []
         with torch.no_grad():
-            for _ in range(future_steps):
-                output = self.model(input_tensor)
-                pred = output[:, -1, 0].item()
-                predictions.append(pred)
-                input_seq = np.append(input_seq[1:], pred)
-                input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
+            output = self.model(input_tensor)
+            # The model outputs the entire sequence. The future predictions are the last `future_steps` elements.
+            predictions = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
         
-        predictions = np.array(predictions).reshape(-1, 1)
-        predictions = self.data_loader.scaler.inverse_transform(predictions)
+        # Use the close scaler for inverse transform
+        close_scaler = self.data_loader.scalers.get('close', getattr(self.data_loader, 'scaler', None))
+        if close_scaler is None:
+             raise ValueError("Scaler not found. Ensure train=True was called or Data loader initialized properly.")
+        predictions = close_scaler.inverse_transform(predictions)
         
-        last_date = pd.to_datetime(data.index[-1])
-        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
+        last_date = pd.to_datetime(stock_data.index[-1])
+        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
         predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions.flatten()})
-        
-        plot_predictions(data['close'], predictions_df)
         
         return predictions_df
 
@@ -306,6 +416,7 @@ class Inferencer:
 
 __all__ = [
     'DataLoader',
+    'PositionalEncoding',
     'TransAm',
     'Trainer',
     'Inferencer',

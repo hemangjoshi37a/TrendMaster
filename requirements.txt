@@ -1,9 +1,15 @@
-numpy
-pandas
-torch
-transformers
-matplotlib
-tqdm
-joblib
-sklearn
-jugaad-trader
+# Core ML & Data
+numpy>=1.24.0
+pandas>=2.0.0
+torch>=2.0.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+tqdm>=4.65.0
+joblib>=1.3.0
+transformers>=4.30.0
+
+# Data Sources
+yfinance>=0.2.28
+
+# Broker (optional — only needed for live Zerodha trading, not required for API)
+jugaad-trader>=2.9.0
