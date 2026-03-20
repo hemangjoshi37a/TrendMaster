@@ -235,6 +235,9 @@ class TransAm(nn.Module):
         initrange = 0.1
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
+        if hasattr(self, 'input_proj'):
+            self.input_proj.bias.data.zero_()
+            self.input_proj.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src):
         if hasattr(self, 'input_proj'):
@@ -392,8 +395,10 @@ class Inferencer:
 
     def evaluate(self, test_data, batch_size):
         self.model.eval()
-        total_loss = 0
-        criterion = torch.nn.MSELoss()
+        total_mse_loss = 0
+        total_mae_loss = 0
+        criterion_mse = torch.nn.MSELoss()
+        criterion_mae = torch.nn.L1Loss()
         
         with torch.no_grad():
             for i in range(0, len(test_data), batch_size):
@@ -405,12 +410,15 @@ class Inferencer:
                 targets = torch.FloatTensor(target_sequences).unsqueeze(-1).to(self.device)
                 
                 outputs = self.model(inputs)
-                loss = criterion(outputs, targets)
-                total_loss += loss.item()
+                mse_loss = criterion_mse(outputs, targets)
+                mae_loss = criterion_mae(outputs, targets)
+                total_mse_loss += mse_loss.item()
+                total_mae_loss += mae_loss.item()
         
-        avg_loss = total_loss / (len(test_data) // batch_size + 1)
-        print(f"Test Loss: {avg_loss:.6f}")
-        return avg_loss
+        avg_mse = total_mse_loss / (len(test_data) // batch_size + 1)
+        avg_mae = total_mae_loss / (len(test_data) // batch_size + 1)
+        print(f"Test Loss (MSE): {avg_mse:.6f} | Test Error (MAE): {avg_mae:.6f}")
+        return avg_mse
 
 # ---------------------- Package Metadata ----------------------
 

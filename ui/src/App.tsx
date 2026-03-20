@@ -366,7 +366,7 @@ function App() {
                     </div>
                   )}
 
-                  <div className="chart-container-wrapper">
+                  <div className="chart-container-wrapper animate-fade-in">
                     <LineChart data={prediction} />
                   </div>
                 </>
@@ -448,7 +448,7 @@ function App() {
                         const changePct = (change / prevPriceVal) * 100;
 
                         return (
-                          <tr key={date}>
+                          <tr key={date} className="animate-fade-in-delayed" style={{ animationDelay: `${i * 0.05}s` }}>
                             <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                             <td style={{ color: 'var(--text-bright)' }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)' }}>

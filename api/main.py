@@ -250,7 +250,7 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
             "dates": hist_dates,
             "prices": [float(p) for p in close_prices],
             "prediction_start_index": len(close_prices),
-            "warning": f"Error during prediction: {str(e)}"
+            "warning": f"Model inference failed: {type(e).__name__} - {str(e)[:100]}"
         }
 
 # --- WebSocket & Endpoints ---
