@@ -110,6 +110,15 @@ class DataLoader:
         """
         df = data.copy()
         
+        # Standardize column names to lowercase for the library
+        column_map = {c: c.lower() for c in df.columns if c.lower() in ['open', 'high', 'low', 'close', 'volume']}
+        df = df.rename(columns=column_map)
+        
+        if 'close' not in df.columns:
+            # Fallback if names are still not standard
+            if 'Close' in df.columns: df = df.rename(columns={'Close': 'close'})
+            else: raise ValueError(f"Missing required 'close' column in data. Found: {df.columns.tolist()}")
+
         # RSI (14-period)
         delta = df['close'].diff()
         gain = delta.where(delta > 0, 0.0)
@@ -181,13 +190,33 @@ class DataLoader:
             sequences.append((train_seq, train_label))
         return sequences
 
-    def load_or_download_data(self, symbol, from_date, to_date, force_download=False):
-        """Load data from file or download if not available."""
+    def load_or_download_data(self, symbol, from_date, to_date, force_download=False, source='zerodha'):
+        """Load data from file or download if not available.
+        
+        Args:
+            symbol: Stock symbol.
+            from_date: Start date.
+            to_date: End date.
+            force_download: If True, skip local cache.
+            source: 'zerodha' or 'yfinance'.
+        """
         filename = f"{symbol}_data.joblib"
         if os.path.exists(filename) and not force_download:
             data = joblib.load(filename)
         else:
-            data = self.get_stock_data(symbol, from_date, to_date)
+            if source == 'zerodha' and self.kite:
+                data = self.get_stock_data(symbol, from_date, to_date)
+            else:
+                # Fallback to yfinance
+                import yfinance as yf
+                yf_symbol = symbol if '.' in symbol else f"{symbol}.NS"
+                ticker = yf.Ticker(yf_symbol)
+                # Note: 'period' mapping might be needed if using fixed dates
+                data = ticker.history(start=from_date, end=to_date)
+                # Cleanup yfinance data
+                data.index.name = 'date'
+                data = data.rename(columns={'Open':'open', 'High':'high', 'Low':'low', 'Close':'close', 'Volume':'volume'})
+            
             joblib.dump(data, filename)
         return data
 
@@ -250,6 +279,57 @@ class TransAm(nn.Module):
         output = self.decoder(output)
         output = output.transpose(0, 1)
         return output
+
+    @staticmethod
+    def load_model(path, device=torch.device('cpu')):
+        """Robustly load a model from path, handling whole modules and state_dicts.
+        
+        Sets up __main__ attributes and monkeypatches for older torch/model versions.
+        """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Model file not found: {path}")
+
+        # Ensure TransAm and PositionalEncoding are in __main__ for torch.load
+        import __main__
+        __main__.TransAm = TransAm
+        __main__.PositionalEncoding = PositionalEncoding
+
+        # Monkeypatch _LinearWithBias for older torch versions
+        import torch.nn.modules.linear
+        if not hasattr(torch.nn.modules.linear, '_LinearWithBias'):
+            torch.nn.modules.linear._LinearWithBias = torch.nn.modules.linear.Linear
+
+        # Load with weights_only=False because whole modules are used in some versions
+        try:
+            checkpoint = torch.load(path, map_location=device, weights_only=False)
+        except Exception as e:
+            # Fallback for newer torch security restrictions if possible
+            checkpoint = torch.load(path, map_location=device)
+
+        if isinstance(checkpoint, dict):
+            # It's a state_dict
+            # Inspect keys to guess input_size and d_model
+            input_size = 1
+            if 'input_proj.weight' in checkpoint:
+                d_model = checkpoint['input_proj.weight'].shape[0]
+                input_size = checkpoint['input_proj.weight'].shape[1]
+            else:
+                d_model = 32 # Fallback default
+            
+            # Note: We prioritize 32 as d_model based on current library training habits
+            model = TransAm(input_size=input_size, d_model=d_model).to(device)
+            model.load_state_dict(checkpoint, strict=False)
+        else:
+            # It's a whole module
+            model = checkpoint
+            # Patch missing attributes for older torch versions if needed
+            for module in model.modules():
+                if isinstance(module, torch.nn.TransformerEncoderLayer):
+                    if not hasattr(module, 'norm_first'):
+                        module.norm_first = False
+        
+        model.eval()
+        return model
 
 # ---------------------- Trainer ----------------------
 
@@ -338,7 +418,7 @@ class Inferencer:
         self.device = device
         self.data_loader = data_loader
 
-    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None):
+    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None, return_confidence=False):
         """Make predictions for a stock.
         
         Args:
@@ -349,9 +429,10 @@ class Inferencer:
             future_steps: Number of future steps to predict.
             columns: List of feature column names for multi-feature mode.
             data: Pre-fetched DataFrame to use instead of downloading.
+            return_confidence: If True, returns (predictions_df, confidence_score).
         
         Returns:
-            DataFrame with 'Date' and 'Predicted_Close' columns.
+            DataFrame with 'Date' and 'Predicted_Close' columns, or (DF, float) if return_confidence is True.
         """
         if data is not None:
             stock_data = data
@@ -385,12 +466,24 @@ class Inferencer:
         close_scaler = self.data_loader.scalers.get('close', getattr(self.data_loader, 'scaler', None))
         if close_scaler is None:
              raise ValueError("Scaler not found. Ensure train=True was called or Data loader initialized properly.")
-        predictions = close_scaler.inverse_transform(predictions)
+        predictions_rescaled = close_scaler.inverse_transform(predictions)
         
         last_date = pd.to_datetime(stock_data.index[-1])
         future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
-        predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions.flatten()})
+        predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions_rescaled.flatten()})
         
+        if return_confidence:
+            # Compute a real confidence score based on prediction smoothness.
+            # We measure the coefficient of variation (std/mean) of the predicted daily returns.
+            pred_flat = predictions_rescaled.flatten()
+            if len(pred_flat) > 1:
+                daily_returns = np.diff(pred_flat) / (np.abs(pred_flat[:-1]) + 1e-9)
+                cv = np.std(daily_returns) / (np.mean(np.abs(daily_returns)) + 1e-9)
+                confidence_score = float(np.clip(100 * (1 / (1 + cv)), 0, 100))
+            else:
+                confidence_score = 50.0
+            return predictions_df, round(confidence_score, 1)
+
         return predictions_df
 
     def evaluate(self, test_data, batch_size):

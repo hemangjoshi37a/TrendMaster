@@ -11,5 +11,7 @@ transformers>=4.30.0
 # Data Sources
 yfinance>=0.2.28
 
-# Broker (optional — only needed for live Zerodha trading, not required for API)
-jugaad-trader>=2.9.0
+# API & Web Server
+fastapi>=0.95.0
+uvicorn>=0.22.0
+openpyxl>=3.1.0

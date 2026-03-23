@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LandingPage from './LandingPage';
 import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
@@ -41,7 +43,7 @@ const TIMEFRAME_MAP: { label: string; period: TimeframePeriod }[] = [
   { label: 'MAX', period: 'max' },
 ];
 
-function App() {
+function Dashboard() {
   const [query, setQuery] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Company[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
@@ -556,6 +558,18 @@ function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
