@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-<<<<<<< HEAD
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LandingPage from './LandingPage';
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
-import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
+import './App.css';
 
 interface Company {
   symbol: string;
@@ -19,10 +14,7 @@ interface PredictionData {
   dates: string[];
   prices: number[];
   prediction_start_index: number;
-<<<<<<< HEAD
   confidence_score?: number;
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
   warning?: string;
 }
 
@@ -37,30 +29,19 @@ interface MarketIndex {
   change_pct: number;
 }
 
-<<<<<<< HEAD
 type TimeframePeriod = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | 'max';
-=======
-type TimeframePeriod = '1mo' | '3mo' | '6mo' | '1y' | 'max';
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
 
 const TIMEFRAME_MAP: { label: string; period: TimeframePeriod }[] = [
   { label: '1M', period: '1mo' },
   { label: '3M', period: '3mo' },
   { label: '6M', period: '6mo' },
   { label: '1Y', period: '1y' },
-<<<<<<< HEAD
   { label: '2Y', period: '2y' },
   { label: '5Y', period: '5y' },
   { label: 'MAX', period: 'max' },
 ];
 
-function Dashboard() {
-=======
-  { label: 'MAX', period: 'max' },
-];
-
-function App() {
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
+function ProDashboard() {
   const [query, setQuery] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Company[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
@@ -262,11 +243,11 @@ function App() {
       {/* Top Navigation */}
       <nav className="navbar">
         <div className="brand">
-          <div className="logo">
+          <div className="logo" onClick={() => window.location.href='/'} style={{cursor: 'pointer'}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
             </svg>
-            TrendMaster <span>PRO</span>
+            TrendMaster <span style={{marginLeft: '8px', background: 'rgba(41,98,255,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#2962FF'}}>PRO</span>
           </div>
         </div>
 
@@ -314,7 +295,7 @@ function App() {
         {/* Left/Center Column - Chart & Table */}
         <div className="main-column">
           <ErrorBoundary>
-            <div className="chart-panel">
+            <div className="chart-panel pro-glow-panel">
               {prediction ? (
                 <>
                   <div className="chart-header">
@@ -367,7 +348,6 @@ function App() {
                     </div>
                   </div>
 
-<<<<<<< HEAD
                   {prediction.warning && (
                     <div style={{
                       margin: '0 20px 8px',
@@ -387,9 +367,6 @@ function App() {
                   )}
 
                   <div className="chart-container-wrapper animate-fade-in">
-=======
-                  <div className="chart-container-wrapper">
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
                     <LineChart data={prediction} />
                   </div>
                 </>
@@ -407,7 +384,6 @@ function App() {
                       </svg>
                       <h3>Analysis Failed</h3>
                       <p>{error}</p>
-<<<<<<< HEAD
                       {currentSymbol && (
                         <button
                           onClick={() => fetchPrediction(currentSymbol, selectedTimeframe)}
@@ -426,8 +402,6 @@ function App() {
                           ↺ Retry
                         </button>
                       )}
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
                     </>
                   ) : (
                     <>
@@ -474,11 +448,7 @@ function App() {
                         const changePct = (change / prevPriceVal) * 100;
 
                         return (
-<<<<<<< HEAD
                           <tr key={date} className="animate-fade-in-delayed" style={{ animationDelay: `${i * 0.05}s` }}>
-=======
-                          <tr key={date}>
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
                             <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                             <td style={{ color: 'var(--text-bright)' }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)' }}>
@@ -505,7 +475,6 @@ function App() {
           {prediction && (
             <div className="widget">
               <div className="widget-title">Model Specifications</div>
-<<<<<<< HEAD
               {prediction.warning ? (
                 <p className="ai-summary" style={{ color: 'var(--warning)', fontWeight: 500 }}>
                   Forecast unavailable. Showing historical data only.
@@ -515,11 +484,6 @@ function App() {
                   TransAm architecture analyzing attention interactions across <b>{selectedTimeframe.toUpperCase()}</b> historical patterns.
                 </p>
               )}
-=======
-              <p className="ai-summary">
-                TransAm architecture analyzing attention interactions across <b>{selectedTimeframe.toUpperCase()}</b> historical patterns.
-              </p>
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
               <div className="stat-row">
                 <span className="stat-label">Model Type</span>
                 <span className="stat-value">Transformer (Multi-Head)</span>
@@ -532,7 +496,6 @@ function App() {
                 <span className="stat-label">Prediction Horizon</span>
                 <span className="stat-value">10 Trading Days</span>
               </div>
-<<<<<<< HEAD
               <div className="stat-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                   <span className="stat-label">Confidence Score</span>
@@ -553,12 +516,30 @@ function App() {
                               : 'var(--error)',
                     transition: 'width 0.6s ease'
                   }}></div>
-=======
-              <div className="stat-row">
-                <span className="stat-label" style={{ marginTop: '12px' }}>Confidence Score</span>
-                <div style={{ width: '100px', height: '6px', background: 'var(--border)', borderRadius: '3px', marginTop: '16px', overflow: 'hidden' }}>
-                  <div style={{ width: '85%', height: '100%', background: 'var(--success)' }}></div>
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
+                </div>
+              </div>
+            </div>
+          )}
+
+          {prediction && !prediction.warning && (
+            <div className="widget animate-fade-in" style={{animationDelay: '0.2s'}}>
+              <div className="widget-title">Deep Learning Signals <span style={{fontSize: '0.6rem', background: '#089981', color: '#fff', padding: '2px 4px', borderRadius: '4px'}}>LIVE</span></div>
+              <div className="pro-widget-grid">
+                <div className="pro-mini-card">
+                  <span className="label">Social Sentiment</span>
+                  <span className="value bull">82% Bullish</span>
+                </div>
+                <div className="pro-mini-card">
+                  <span className="label">Inst. Flow</span>
+                  <span className="value bull">+4.2B INR</span>
+                </div>
+                <div className="pro-mini-card">
+                  <span className="label">Volatility (HV)</span>
+                  <span className="value">14.6%</span>
+                </div>
+                <div className="pro-mini-card">
+                  <span className="label">Delta Skew</span>
+                  <span className="value bear">-0.15</span>
                 </div>
               </div>
             </div>
@@ -602,16 +583,4 @@ function App() {
   );
 }
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default App;
+export default ProDashboard;

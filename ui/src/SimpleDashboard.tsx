@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-<<<<<<< HEAD
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LandingPage from './LandingPage';
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
-import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
+import './App.css';
 
 interface Company {
   symbol: string;
@@ -19,10 +14,7 @@ interface PredictionData {
   dates: string[];
   prices: number[];
   prediction_start_index: number;
-<<<<<<< HEAD
   confidence_score?: number;
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
   warning?: string;
 }
 
@@ -37,49 +29,32 @@ interface MarketIndex {
   change_pct: number;
 }
 
-<<<<<<< HEAD
 type TimeframePeriod = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | 'max';
-=======
-type TimeframePeriod = '1mo' | '3mo' | '6mo' | '1y' | 'max';
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
 
 const TIMEFRAME_MAP: { label: string; period: TimeframePeriod }[] = [
   { label: '1M', period: '1mo' },
   { label: '3M', period: '3mo' },
   { label: '6M', period: '6mo' },
   { label: '1Y', period: '1y' },
-<<<<<<< HEAD
   { label: '2Y', period: '2y' },
   { label: '5Y', period: '5y' },
   { label: 'MAX', period: 'max' },
 ];
 
-function Dashboard() {
-=======
-  { label: 'MAX', period: 'max' },
-];
-
-function App() {
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
+function SimpleDashboard() {
   const [query, setQuery] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Company[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
-  const [livePrice, setLivePrice] = useState<number | null>(null);
-  const [prevPrice, setPrevPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [recentStocks, setRecentStocks] = useState<RecentStock[]>([]);
   const [marketOpen, setMarketOpen] = useState<boolean>(true);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframePeriod>('1y');
-  const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([]);
   const [currentSymbol, setCurrentSymbol] = useState<string>('');
 
-  const ws = useRef<WebSocket | null>(null);
   const isSelecting = useRef<boolean>(false);
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef<number>(0);
 
   useEffect(() => {
     const saved = localStorage.getItem('recentStocks');
@@ -146,71 +121,23 @@ function App() {
     }
   }, [query]);
 
-  const connectWebSocket = useCallback((stockSymbol: string) => {
-    if (ws.current) ws.current.close();
-    if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-    reconnectAttempts.current = 0;
-
-    const createConnection = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const socket = new WebSocket(`${protocol}//${host}/ws/ticks/${stockSymbol.toUpperCase()}`);
-
-      socket.onopen = () => {
-        setWsStatus('connected');
-        reconnectAttempts.current = 0;
-      };
-
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.price) {
-          setLivePrice(prev => {
-            setPrevPrice(prev);
-            return data.price;
-          });
-        }
-      };
-
-      socket.onclose = () => {
-        setWsStatus('reconnecting');
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-        reconnectAttempts.current += 1;
-        reconnectTimeout.current = setTimeout(createConnection, delay);
-      };
-
-      socket.onerror = () => {
-        socket.close();
-      };
-
-      ws.current = socket;
-    };
-
-    createConnection();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (ws.current) ws.current.close();
-      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-    };
-  }, []);
-
   const fetchPrediction = useCallback(async (symbol: string, period: TimeframePeriod) => {
     setLoading(true);
     setError(null);
     setPrediction(null);
-    setLivePrice(null);
-    setPrevPrice(null);
 
     try {
       const response = await fetch(`/api/predict?stock_symbol=${encodeURIComponent(symbol)}&period=${period}`);
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || "Failed to fetch prediction for " + symbol);
+        throw new Error(errData.detail || "Failed to fetch top data for " + symbol);
       }
       const data: PredictionData = await response.json();
+      
+      // Free users will just see history, not forecasts.
+      data.warning = "Free Account";
+      
       setPrediction(data);
-      connectWebSocket(symbol);
 
       setRecentStocks(prev => {
         const filtered = prev.filter(s => s.symbol !== symbol);
@@ -223,7 +150,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [connectWebSocket]);
+  }, []);
 
   const handleManualSearch = () => {
     if (query.trim()) {
@@ -254,19 +181,16 @@ function App() {
     }
   };
 
-  const priceChange = livePrice && prevPrice ? livePrice - prevPrice : 0;
-  const priceChangePct = prevPrice ? (priceChange / prevPrice) * 100 : 0;
-
   return (
     <div className="App dark-theme">
       {/* Top Navigation */}
       <nav className="navbar">
         <div className="brand">
-          <div className="logo">
+          <div className="logo" onClick={() => window.location.href='/'} style={{cursor: 'pointer'}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
             </svg>
-            TrendMaster <span>PRO</span>
+            TrendMaster <span style={{marginLeft: '8px', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#d1d4dc'}}>BASIC</span>
           </div>
         </div>
 
@@ -321,24 +245,14 @@ function App() {
                     <div className="stock-info">
                       <div className="stock-symbol">
                         {prediction.symbol}
-                        {wsStatus === 'connected' && (
-                          <span className="ws-status live"><span className="pulse-dot"></span> LIVE</span>
-                        )}
-                        {wsStatus === 'reconnecting' && (
-                          <span className="ws-status reconnecting">RECONNECTING...</span>
-                        )}
+                        <span className="ws-status reconnecting" style={{background: 'rgba(140, 155, 173, 0.2)', color: '#8c9bad'}}>EOD DATA ONLY</span>
                       </div>
                       <div className="stock-name">{prediction.company_name}</div>
                     </div>
                     <div className="stock-price-container">
                       <div className="current-price">
-                        {livePrice ? livePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : prediction.prices[prediction.prediction_start_index - 1]?.toFixed(2) || "---"}
+                        {prediction.prices[prediction.prediction_start_index - 1]?.toFixed(2) || "---"}
                       </div>
-                      {priceChange !== 0 && (
-                        <div className={`price-change ${priceChange >= 0 ? 'up' : 'down'}`}>
-                          {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)} ({Math.abs(priceChangePct).toFixed(2)}%)
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -360,36 +274,28 @@ function App() {
                         <div className="legend-color" style={{ background: '#2962FF' }}></div>
                         Historical Data
                       </div>
-                      <div className="legend-item">
-                        <div className="legend-color" style={{ background: '#F23645' }}></div>
-                        Transformer Forecast
-                      </div>
                     </div>
                   </div>
 
-<<<<<<< HEAD
                   {prediction.warning && (
                     <div style={{
                       margin: '0 20px 8px',
                       padding: '8px 12px',
-                      background: 'rgba(255, 152, 0, 0.12)',
-                      border: '1px solid rgba(255, 152, 0, 0.35)',
+                      background: 'rgba(41, 98, 255, 0.12)',
+                      border: '1px solid rgba(41, 98, 255, 0.35)',
                       borderRadius: 'var(--radius-sm)',
                       fontSize: '0.78rem',
-                      color: 'var(--warning)',
+                      color: '#2962FF',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px'
                     }}>
-                      <span>⚠</span>
-                      <span>{prediction.warning} — Showing historical data only.</span>
+                      <span>ℹ️</span>
+                      <span>You are viewing basic End-Of-Day data. <a href="/#pricing" style={{color: '#2962FF', fontWeight: 'bold'}}>Upgrade to Pro</a> for Live WebSockets and AI Forecasts.</span>
                     </div>
                   )}
 
                   <div className="chart-container-wrapper animate-fade-in">
-=======
-                  <div className="chart-container-wrapper">
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
                     <LineChart data={prediction} />
                   </div>
                 </>
@@ -398,7 +304,7 @@ function App() {
                   {loading ? (
                     <div className="loader">
                       <div className="loader-spinner"></div>
-                      <p>Running Transformer Model on {query}...</p>
+                      <p>Loading market data for {query}...</p>
                     </div>
                   ) : error ? (
                     <>
@@ -407,7 +313,6 @@ function App() {
                       </svg>
                       <h3>Analysis Failed</h3>
                       <p>{error}</p>
-<<<<<<< HEAD
                       {currentSymbol && (
                         <button
                           onClick={() => fetchPrediction(currentSymbol, selectedTimeframe)}
@@ -426,16 +331,14 @@ function App() {
                           ↺ Retry
                         </button>
                       )}
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
                     </>
                   ) : (
                     <>
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
                       </svg>
-                      <h3>Terminal Ready</h3>
-                      <p>Search for an NSE symbol to view AI-powered forecasts.</p>
+                      <h3>Basic Dashboard Ready</h3>
+                      <p>Search for an NSE symbol to view historical action.</p>
                       
                       <div className="recent-list" style={{ marginTop: '24px', justifyContent: 'center' }}>
                         {recentStocks.slice(0, 5).map(s => (
@@ -453,20 +356,20 @@ function App() {
             {/* Price Table Panel */}
             {prediction && (
               <div className="table-panel">
-                <div className="panel-title">Forecast Data</div>
+                <div className="panel-title">Historical Data (Last 5 Days)</div>
                 <div className="table-wrapper">
                   <table className="prediction-grid">
                     <thead>
                       <tr>
                         <th>Date</th>
-                        <th>Target Price</th>
+                        <th>Close Price</th>
                         <th>Change</th>
-                        <th>AI Signal</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {prediction.dates.slice(prediction.prediction_start_index, prediction.prediction_start_index + 10).map((date, i) => {
-                        const idx = prediction.prediction_start_index + i;
+                      {prediction.dates.slice(Math.max(0, prediction.prediction_start_index - 6), prediction.prediction_start_index - 1).reverse().map((date, i) => {
+                        const idx = prediction.dates.indexOf(date);
                         const price = prediction.prices[idx];
                         const prevPriceVal = prediction.prices[idx - 1];
                         if (price === undefined || prevPriceVal === undefined) return null;
@@ -474,24 +377,23 @@ function App() {
                         const changePct = (change / prevPriceVal) * 100;
 
                         return (
-<<<<<<< HEAD
                           <tr key={date} className="animate-fade-in-delayed" style={{ animationDelay: `${i * 0.05}s` }}>
-=======
-                          <tr key={date}>
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
                             <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                             <td style={{ color: 'var(--text-bright)' }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)' }}>
                               {change >= 0 ? '+' : ''}{changePct.toFixed(2)}%
                             </td>
                             <td>
-                              <span className={`trend-badge ${change >= 0 ? 'bullish' : 'bearish'}`}>
-                                {change >= 0 ? 'BULL' : 'BEAR'}
-                              </span>
+                              <span style={{ color: '#8c9bad' }}>Settled</span>
                             </td>
                           </tr>
                         );
                       })}
+                      <tr>
+                         <td colSpan={4} style={{textAlign: 'center', padding: '20px', color: '#8c9bad', borderBottom: 'none'}}>
+                            🔒 <a href="/#pricing" style={{color: '#2962FF', textDecoration: 'none', fontWeight: 'bold'}}>Upgrade to Pro</a> to unlock 10-day AI forecasts and real-time signals.
+                         </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -502,67 +404,16 @@ function App() {
 
         {/* Right Sidebar */}
         <div className="sidebar">
-          {prediction && (
-            <div className="widget">
-              <div className="widget-title">Model Specifications</div>
-<<<<<<< HEAD
-              {prediction.warning ? (
-                <p className="ai-summary" style={{ color: 'var(--warning)', fontWeight: 500 }}>
-                  Forecast unavailable. Showing historical data only.
-                </p>
-              ) : (
-                <p className="ai-summary">
-                  TransAm architecture analyzing attention interactions across <b>{selectedTimeframe.toUpperCase()}</b> historical patterns.
-                </p>
-              )}
-=======
-              <p className="ai-summary">
-                TransAm architecture analyzing attention interactions across <b>{selectedTimeframe.toUpperCase()}</b> historical patterns.
-              </p>
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
-              <div className="stat-row">
-                <span className="stat-label">Model Type</span>
-                <span className="stat-value">Transformer (Multi-Head)</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Features Used</span>
-                <span className="stat-value">Price, Volume, Tech Ind.</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Prediction Horizon</span>
-                <span className="stat-value">10 Trading Days</span>
-              </div>
-<<<<<<< HEAD
-              <div className="stat-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                  <span className="stat-label">Confidence Score</span>
-                  <span className="stat-value" style={{
-                    color: (prediction.confidence_score ?? 0) >= 65 ? 'var(--success)'
-                         : (prediction.confidence_score ?? 0) >= 40 ? 'var(--warning)'
-                         : 'var(--error)'
-                  }}>
-                    {prediction.confidence_score !== undefined ? `${prediction.confidence_score}%` : 'N/A'}
-                  </span>
-                </div>
-                <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${prediction.confidence_score ?? 0}%`,
-                    height: '100%',
-                    background: (prediction.confidence_score ?? 0) >= 65 ? 'var(--success)'
-                              : (prediction.confidence_score ?? 0) >= 40 ? 'var(--warning)'
-                              : 'var(--error)',
-                    transition: 'width 0.6s ease'
-                  }}></div>
-=======
-              <div className="stat-row">
-                <span className="stat-label" style={{ marginTop: '12px' }}>Confidence Score</span>
-                <div style={{ width: '100px', height: '6px', background: 'var(--border)', borderRadius: '3px', marginTop: '16px', overflow: 'hidden' }}>
-                  <div style={{ width: '85%', height: '100%', background: 'var(--success)' }}></div>
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
-                </div>
-              </div>
+          
+          <div className="widget">
+            <div className="upsell-banner">
+              <h3>Unlock AI Forecasts</h3>
+              <p>Get access to our Deep Learning Transformer Models, exact entry/exit targets, and Live WebSocket feeds.</p>
+              <button className="upgrade-btn" onClick={() => window.location.href='/#pricing'}>
+                Upgrade to Pro
+              </button>
             </div>
-          )}
+          </div>
 
           <div className="widget">
             <div className="widget-title">Market Overview</div>
@@ -602,16 +453,4 @@ function App() {
   );
 }
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default App;
+export default SimpleDashboard;
