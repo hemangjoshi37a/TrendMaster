@@ -28,7 +28,6 @@ symbol_to_name = {}
 data_loader = DataLoader() # For preprocessing and scaling
 
 # --- Prediction Cache (TTL = 300s) ---
-<<<<<<< HEAD
 CACHE_FILE = os.path.join(BASE_DIR, "api", "api_cache.json")
 CACHE_TTL = 300  # 5 minutes
 
@@ -50,11 +49,6 @@ def save_cache():
 
 prediction_cache: Dict[str, dict] = load_cache()  # {"SYMBOL_period": {"data": ..., "timestamp": ...}}
 
-=======
-prediction_cache: Dict[str, dict] = {}  # {"SYMBOL_period": {"data": ..., "timestamp": ...}}
-CACHE_TTL = 300  # 5 minutes
-
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
 # --- Model Management ---
 models: Dict[str, nn.Module] = {}
 
@@ -347,10 +341,7 @@ def predict_stock(
         }
         # Store in cache
         prediction_cache[cache_key] = {"data": result, "timestamp": time.time()}
-<<<<<<< HEAD
         save_cache()
-=======
->>>>>>> 908e367a2824764ef0b35736e589e8fbcc6ffd45
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

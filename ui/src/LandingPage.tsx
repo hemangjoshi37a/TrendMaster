@@ -6,6 +6,7 @@ const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro'>('basic');
   const [scrollProgress, setScrollProgress] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,23 +27,36 @@ const LandingPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const openAuth = (mode: 'signin' | 'signup') => {
+  const openAuth = (mode: 'signin' | 'signup', plan: 'basic' | 'pro' = 'basic') => {
     setAuthMode(mode);
+    setSelectedPlan(plan);
     setAuthError('');
     setShowAuthModal(true);
   };
 
+  // Static demo credentials
+  const DEMO_ACCOUNTS = [
+    { email: 'free@trendmaster.ai', password: 'free123', isPro: false },
+    { email: 'pro@trendmaster.ai',  password: 'pro123',  isPro: true  },
+  ];
+
   const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setAuthError('Please fill in all required fields.');
+      return;
+    }
+
     if (authMode === 'signin') {
-      if (email === 'admin@trendmaster.ai' && password === 'admin123') {
-        navigate('/dashboard');
+      const match = DEMO_ACCOUNTS.find(a => a.email === email && a.password === password);
+      if (match) {
+        navigate('/dashboard', { state: { isPro: match.isPro } });
       } else {
-        setAuthError('Invalid credentials. Use admin@trendmaster.ai / admin123');
+        setAuthError('Invalid credentials. Use free@trendmaster.ai / free123 or pro@trendmaster.ai / pro123');
       }
     } else {
-      // Automatically log them in for sign-up demo purposes
-      navigate('/dashboard');
+      // Sign-up: trust the plan the user chose on the page
+      navigate('/dashboard', { state: { isPro: selectedPlan === 'pro' } });
     }
   };
 
@@ -89,13 +103,13 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="tv-nav-links">
             <span className="nav-item" onClick={() => scrollTo('features')} style={{cursor: 'pointer'}}>Features</span>
-            <span className="nav-item" onClick={() => scrollTo('models')} style={{cursor: 'pointer'}}>AI Models</span>
-            <span className="nav-item" onClick={() => scrollTo('accuracy')} style={{cursor: 'pointer'}}>Accuracy</span>
-            <span className="nav-item" onClick={() => scrollTo('about')} style={{cursor: 'pointer'}}>About Us</span>
+            <span className="nav-item" onClick={() => scrollTo('how-it-works')} style={{cursor: 'pointer'}}>Pipeline</span>
+            <span className="nav-item" onClick={() => scrollTo('pricing')} style={{cursor: 'pointer'}}>Pricing</span>
+            <span className="nav-item" onClick={() => scrollTo('faq')} style={{cursor: 'pointer'}}>FAQ</span>
           </div>
           <div className="tv-nav-actions">
             <button className="tv-btn-login" onClick={() => openAuth('signin')}>Log In</button>
-            <button className="tv-btn-get-started" onClick={() => openAuth('signup')}>Try AI Forecast</button>
+            <button className="tv-btn-get-started" onClick={() => openAuth('signup', 'pro')}>Subscribe to Pro</button>
           </div>
         </div>
       </nav>
@@ -265,6 +279,141 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
 
+        {/* Testimonials */}
+        <section id="testimonials" className="tv-testimonials-section scroll-reveal">
+           <h2>Engineered for Traders. Validated by Results.</h2>
+           <div className="testimonials-track">
+             <div className="testimonial-card">
+               <div className="t-stars">★★★★★</div>
+               <p className="t-quote">"The 10-day forward looking projection on BankNifty saved me from a massive fake-out. Absolutely unprecedented UI and latency."</p>
+               <div className="t-author">— Rohan S., Options Trader</div>
+             </div>
+             <div className="testimonial-card">
+               <div className="t-stars">★★★★★</div>
+               <p className="t-quote">"TrendMaster feels like holding a Bloomberg terminal injected with next-level deep learning. The confidence score dictates my entire sizing strategy now."</p>
+               <div className="t-author">— Anil K., Quantitative Analyst</div>
+             </div>
+             <div className="testimonial-card">
+               <div className="t-stars">★★★★★</div>
+               <p className="t-quote">"Smooth, flawless execution. It seamlessly bridges the gap between complex PyTorch inference and an incredibly intuitive visual dashboard."</p>
+               <div className="t-author">— Priya M., Retail Investor</div>
+             </div>
+           </div>
+        </section>
+
+        {/* Advanced Tooling Layout */}
+        <section id="advanced-tools" className="tv-tools-section scroll-reveal">
+           <div className="tools-header">
+             <h2>A Terminal Without Compromise</h2>
+             <p>Every metric, every indicator, optimized for sheer computational speed.</p>
+           </div>
+           <div className="tv-bento-grid">
+              <div className="bento-card col-span-2">
+                 <div className="bento-content">
+                    <h3>Deep Pattern Recognition</h3>
+                    <p>Detect hidden structural shifts using multi-layer transformer modules that learn dynamically from your favorite index feeds.</p>
+                 </div>
+                 <div className="bento-bg pattern-bg-1"></div>
+              </div>
+              <div className="bento-card">
+                 <div className="bento-content">
+                    <h3>Websocket Streaming</h3>
+                    <p>0.2ms latency to the dashboard.</p>
+                 </div>
+                 <div className="bento-bg pattern-bg-2"></div>
+              </div>
+              <div className="bento-card">
+                 <div className="bento-content">
+                    <h3>Risk Parameterization</h3>
+                    <p>Proprietary standard deviation bands to map out localized drawdowns.</p>
+                 </div>
+                 <div className="bento-bg pattern-bg-3"></div>
+              </div>
+              <div className="bento-card col-span-2">
+                 <div className="bento-content">
+                    <h3>Confidence Scoring Matrix</h3>
+                    <p>Trade only when the probabilities align perfectly. Mathematical confirmation before capital allocation.</p>
+                 </div>
+                 <div className="bento-bg pattern-bg-4"></div>
+              </div>
+           </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section id="faq" className="tv-faq-section scroll-reveal">
+          <div className="faq-container">
+            <h2>Frequently Asked Questions</h2>
+            <div className="faq-item">
+               <details>
+                  <summary>How does the AI model actually predict prices?</summary>
+                  <div className="faq-answer">We utilize a proprietary PyTorch-based Transformer architecture (TransAm) combined with internal positional embeddings. It ingests the last 30 intervals of OHLC data alongside technical indicators (RSI, EMA, MACD) to emit a 10-step forward looking probabilistic array.</div>
+               </details>
+            </div>
+            <div className="faq-item">
+               <details>
+                  <summary>Is the market data real-time?</summary>
+                  <div className="faq-answer">Yes. We connect to NSE exchange feeds via dual-redundant WebSockets, ensuring live tick streaming directly to your client instance with less than 25ms of latency.</div>
+               </details>
+            </div>
+            <div className="faq-item">
+               <details>
+                  <summary>What markets does TrendMaster support?</summary>
+                  <div className="faq-answer">Currently, TrendMaster Pro is optimized specifically for National Stock Exchange (NSE) indices and standard equity options. Global equities and FX commodities are planned for v2.0.</div>
+               </details>
+            </div>
+            <div className="faq-item">
+               <details>
+                  <summary>Do I need to know how to code to use the platform?</summary>
+                  <div className="faq-answer">Not at all. We have condensed complex neural network evaluation processes into a beautiful, point-and-click UI environment. Just search your ticker, and the mathematics happen instantly in the background.</div>
+               </details>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section id="pricing" className="tv-pricing-section scroll-reveal">
+          <h2 className="tv-section-heading">Simple, Transparent Pricing.</h2>
+          <p className="tv-section-subheading">Choose the plan that best fits your trading style and ambition.</p>
+          <div className="pricing-cards-container">
+            {/* Basic Plan */}
+            <div className="pricing-card">
+              <h3 className="plan-title">Basic</h3>
+              <p className="plan-description">10-day free trial. No credit card required.</p>
+              <div className="price">$0<span className="price-suffix">/10 days</span></div>
+              <ul className="plan-features">
+                <li className="feature-item included">1-Day AI Forecast Horizon</li>
+                <li className="feature-item included">Delayed Historical Data Access</li>
+                <li className="feature-item included">Basic Charting Tools</li>
+                <li className="feature-item included">Email Support</li>
+                <li className="feature-item excluded">Real-time WebSockets</li>
+                <li className="feature-item excluded">AI Confidence Scores</li>
+                <li className="feature-item excluded">No Latency Limits</li>
+                <li className="feature-item excluded">Priority Support</li>
+              </ul>
+              <button className="tv-btn-secondary-large" onClick={() => openAuth('signup', 'basic')}>Start 10-Day Free Trial</button>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="pricing-card pro-plan">
+              <div className="badge">MOST POPULAR</div>
+              <h3 className="plan-title">Pro Terminal</h3>
+              <p className="plan-description">Full access for 30 days. Cancel anytime.</p>
+              <div className="price">$49<span className="price-suffix">/30 days</span></div>
+              <ul className="plan-features">
+                <li className="feature-item included">10-Day AI Forecast Horizon</li>
+                <li className="feature-item included">Real-time WebSockets (25ms latency)</li>
+                <li className="feature-item included">Advanced AI Confidence Scores</li>
+                <li className="feature-item included">No Latency Limits</li>
+                <li className="feature-item included">Full Historical Data Access</li>
+                <li className="feature-item included">Premium Charting & Indicators</li>
+                <li className="feature-item included">Calculated Entry/Exit Suggestions</li>
+                <li className="feature-item included">Priority Email & Chat Support</li>
+              </ul>
+              <button className="tv-btn-primary-large" onClick={() => openAuth('signup', 'pro')}>Subscribe to Pro</button>
+            </div>
+          </div>
+        </section>
+
         {/* Huge CTA Bottom */}
         <section className="tv-bottom-cta">
           <h2>Ready to trade with a true quantitative edge?</h2>
@@ -299,15 +448,15 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="footer-col">
             <h4>Platform</h4>
-            <span>Live Dashboard</span>
-            <span>Accuracy Metrics</span>
-            <span>Pricing</span>
+            <span onClick={() => scrollTo('features')} style={{cursor:'pointer'}}>Features</span>
+            <span onClick={() => scrollTo('accuracy')} style={{cursor:'pointer'}}>Accuracy Metrics</span>
+            <span onClick={() => scrollTo('pricing')} style={{cursor:'pointer'}}>Pricing</span>
           </div>
           <div className="footer-col">
             <h4>Company</h4>
-            <span>About Us</span>
-            <span>Research Papers</span>
-            <span>Contact</span>
+            <span onClick={() => scrollTo('about')} style={{cursor:'pointer'}}>About Us</span>
+            <span onClick={() => scrollTo('faq')} style={{cursor:'pointer'}}>FAQ</span>
+            <span onClick={() => openAuth('signin')} style={{cursor:'pointer'}}>Log In</span>
           </div>
         </div>
         <div className="footer-bottom">
@@ -329,6 +478,11 @@ const LandingPage: React.FC = () => {
              </div>
  
              <h2 className="auth-heading">{authMode === 'signin' ? 'Welcome Back' : 'Create Account'}</h2>
+             {selectedPlan === 'pro' && (
+               <div style={{display:'flex', justifyContent:'center', marginBottom:'12px'}}>
+                 <span style={{background:'linear-gradient(90deg,#2962FF,#089981)', color:'#fff', padding:'4px 14px', borderRadius:'20px', fontSize:'0.8rem', fontWeight:'bold'}}>⚡ Pro Plan Selected</span>
+               </div>
+             )}
              <p className="auth-subheading" style={{marginBottom: '24px'}}>
                {authMode === 'signin' 
                  ? 'Enter your details to access the AI dashboard.' 
@@ -351,8 +505,8 @@ const LandingPage: React.FC = () => {
                  <label>Password</label>
                  <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
                </div>
-               <button type="submit" className="primary-btn">
-                 {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
+               <button type="submit" className="primary-btn" style={selectedPlan === 'pro' ? {background:'linear-gradient(90deg,#2962FF,#1E53E5)', boxShadow:'0 4px 16px rgba(41,98,255,0.4)'} : {}}>
+                  {authMode === 'signin' ? 'Sign In' : (selectedPlan === 'pro' ? 'Subscribe & Start Pro' : 'Sign Up Free')}
                </button>
              </form>
              <div className="auth-footer">
