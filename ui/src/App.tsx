@@ -61,6 +61,10 @@ function Dashboard() {
   const [currentSymbol, setCurrentSymbol] = useState<string>('');
   const [isPro, setIsPro] = useState<boolean>(location.state?.isPro || false);
   const [showPricing, setShowPricing] = useState<boolean>(false);
+  const [alerts, setAlerts] = useState<{symbol: string, target: number, type: 'above' | 'below', active: boolean}[]>([]);
+  const [triggeredAlerts, setTriggeredAlerts] = useState<string[]>([]); // Array of alert IDs or symbols that flared
+  const [showAddAlert, setShowAddAlert] = useState<boolean>(false);
+  const [alertForm, setAlertForm] = useState<{target: string, type: 'above' | 'below'}>({target: '', type: 'above'});
 
   // --- Trial / Subscription Expiry Logic ---
   const TRIAL_DAYS = 10;
@@ -103,6 +107,9 @@ function Dashboard() {
   useEffect(() => {
     const saved = localStorage.getItem('recentStocks');
     if (saved) setRecentStocks(JSON.parse(saved));
+
+    const savedAlerts = localStorage.getItem('tm_alerts');
+    if (savedAlerts) setAlerts(JSON.parse(savedAlerts));
 
     const checkMarket = () => {
       const now = new Date();
@@ -165,6 +172,46 @@ function Dashboard() {
     }
   }, [query]);
 
+  const removeAlert = (symbol: string, target: number) => {
+    const updated = alerts.filter(a => !(a.symbol === symbol && a.target === target));
+    setAlerts(updated);
+    localStorage.setItem('tm_alerts', JSON.stringify(updated));
+  };
+
+  const addAlert = (symbol: string, target: number, type: 'above' | 'below') => {
+    if (!isPro) return;
+    const newAlert = { symbol: symbol.toUpperCase(), target, type, active: true };
+    const updated = [...alerts, newAlert];
+    setAlerts(updated);
+    localStorage.setItem('tm_alerts', JSON.stringify(updated));
+  };
+
+  const dismissAlert = (id: string) => {
+    setTriggeredAlerts(prev => prev.filter(a => a !== id));
+  };
+
+  const checkAlerts = useCallback((symbol: string, price: number) => {
+    if (!isPro) return;
+    
+    alerts.forEach(alert => {
+      if (alert.active && alert.symbol === symbol) {
+        const isTriggered = alert.type === 'above' ? price >= alert.target : price <= alert.target;
+        if (isTriggered) {
+          // Trigger alert!
+          const alertId = `${symbol}-${alert.target}`;
+          setTriggeredAlerts(prev => Array.from(new Set([...prev, alertId])));
+          
+          // Deactivate so it doesn't spam
+          const updated = alerts.map(a => 
+            a.symbol === symbol && a.target === alert.target ? { ...a, active: false } : a
+          );
+          setAlerts(updated);
+          localStorage.setItem('tm_alerts', JSON.stringify(updated));
+        }
+      }
+    });
+  }, [alerts, isPro]);
+
   const connectWebSocket = useCallback((stockSymbol: string) => {
     if (ws.current) ws.current.close();
     if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
@@ -185,6 +232,7 @@ function Dashboard() {
         if (data.price) {
           setLivePrice(prev => {
             setPrevPrice(prev);
+            checkAlerts(stockSymbol.toUpperCase(), data.price);
             return data.price;
           });
         }
@@ -359,6 +407,22 @@ function Dashboard() {
         </div>
       )}
 
+      {/* Triggered Alerts Notification Bar */}
+      {isPro && triggeredAlerts.length > 0 && (
+        <div className="alert-notifications-bar">
+          {triggeredAlerts.map(id => {
+            const [sym, target] = id.split('-');
+            return (
+              <div key={id} className="alert-banner-item">
+                <span className="ab-icon">🔔</span>
+                <span className="ab-text">Target Hit: <b>{sym}</b> reached <b>₹{Number(target).toLocaleString('en-IN')}</b></span>
+                <button className="ab-close" onClick={() => dismissAlert(id)}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Expired Full Paywall */}
       {isExpired && (
         <div style={{
@@ -397,6 +461,21 @@ function Dashboard() {
                     <div className="stock-info">
                       <div className="stock-symbol">
                         {prediction.symbol}
+                        {isPro && (
+                          <button 
+                            className={`alert-bell-btn ${alerts.some(a => a.symbol === prediction.symbol && a.active) ? 'has-active' : ''}`}
+                            onClick={() => {
+                              setAlertForm({ target: livePrice?.toString() || '', type: 'above' });
+                              setShowAddAlert(true);
+                            }}
+                            title="Set Price Alert"
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                          </button>
+                        )}
                         {wsStatus === 'connected' && (
                           <span className="ws-status live"><span className="pulse-dot"></span> LIVE</span>
                         )}
@@ -499,21 +578,263 @@ function Dashboard() {
                       )}
                     </>
                   ) : (
-                    <>
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
-                      </svg>
-                      <h3>Terminal Ready</h3>
-                      <p>Search for an NSE symbol to view AI-powered forecasts.</p>
-                      
-                      <div className="recent-list" style={{ marginTop: '24px', justifyContent: 'center' }}>
-                        {recentStocks.slice(0, 5).map(s => (
-                          <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
-                            {s.symbol}
-                          </div>
-                        ))}
+                    <div className={`welcome-screen${isPro ? ' pro' : ''}`}>
+                      {/* Animated background orbs — gold for Pro, blue for Free */}
+                      <div className="welcome-orb welcome-orb-1" />
+                      <div className="welcome-orb welcome-orb-2" />
+                      <div className="welcome-orb welcome-orb-3" />
+
+                      <div className="welcome-inner">
+                        {isPro ? (
+                          /* ── PRO TERMINAL WELCOME ── */
+                          <>
+                            {/* Pro Header */}
+                            <div className="welcome-header">
+                              <div className="welcome-logo-mark pro-mark">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg>
+                              </div>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <h2 className="welcome-title pro-title">
+                                    {(() => {
+                                      const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getHours();
+                                      return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+                                    })()}, Pro Member
+                                  </h2>
+                                  <span className="pro-elite-badge">⚡ PRO</span>
+                                </div>
+                                <p className="welcome-sub">All features unlocked · AI Confidence Scores · Full 10-Day Forecast</p>
+                              </div>
+                              <div className={`welcome-market-badge ${marketOpen ? 'open' : 'closed'}`}>
+                                <span className="status-dot" />
+                                {marketOpen ? 'NSE LIVE' : 'NSE CLOSED'}
+                              </div>
+                            </div>
+
+                            {/* Pro Capabilities Bar */}
+                            <div className="pro-caps-bar">
+                              {[
+                                { icon: '🔮', label: 'Full AI Forecast' },
+                                { icon: '⚡', label: 'Real-time WebSockets' },
+                                { icon: '📊', label: 'AI Confidence Scores' },
+                                { icon: '📈', label: 'Full Historical Data' },
+                              ].map((cap, i) => (
+                                <div key={i} className="pro-cap-pill" style={{ animationDelay: `${i * 0.06}s` }}>
+                                  <span>{cap.icon}</span>
+                                  <span>{cap.label}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Live Index Cards — gold accent */}
+                            <div className="index-cards-grid">
+                              {marketIndices.length > 0 ? marketIndices.map((idx, i) => (
+                                <div
+                                  key={idx.name}
+                                  className={`index-card pro-card ${idx.change_pct >= 0 ? 'bull' : 'bear'}`}
+                                  style={{ animationDelay: `${i * 0.08}s` }}
+                                  onClick={() => handleSelectCompany({ symbol: idx.name.replace(' ', ''), price: null })}
+                                >
+                                  <div className="ic-glow" />
+                                  <div className="ic-top">
+                                    <span className="ic-name">{idx.name}</span>
+                                    <span className={`ic-badge ${idx.change_pct >= 0 ? 'bull' : 'bear'}`}>
+                                      {idx.change_pct >= 0 ? '▲' : '▼'} {Math.abs(idx.change_pct).toFixed(2)}%
+                                    </span>
+                                  </div>
+                                  <div className="ic-price">{idx.price.toLocaleString('en-IN')}</div>
+                                  <div className="ic-bar">
+                                    <div className="ic-bar-fill" style={{ width: `${Math.min(Math.abs(idx.change_pct) * 10, 100)}%` }} />
+                                  </div>
+                                </div>
+                              )) : [1, 2, 3].map(i => (
+                                <div key={i} className="index-card skeleton" style={{ animationDelay: `${i * 0.1}s` }}>
+                                  <div className="skeleton-line" style={{ width: '60%', height: '12px', marginBottom: '12px' }} />
+                                  <div className="skeleton-line" style={{ width: '80%', height: '24px' }} />
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* AI Signal Feed — Pro exclusive */}
+                            <div className="welcome-divider">
+                              <div className="divider-line" />
+                              <span className="divider-text pro-divider-text">🤖 AI Signal Feed</span>
+                              <div className="divider-line" />
+                            </div>
+
+                            <div className="ai-signals-row">
+                              {[
+                                { symbol: 'NIFTY50', label: 'Nifty 50', signal: 'BULLISH', confidence: 87, reason: 'Strong momentum breakout above 200 EMA with volume confirmation' },
+                                { symbol: 'RELIANCE', label: 'Reliance', signal: 'BULLISH', confidence: 74, reason: 'Consolidation breakout with institutional volume surge detected' },
+                                { symbol: 'INFY', label: 'Infosys', signal: 'BEARISH', confidence: 68, reason: 'MACD bearish crossover with RSI overbought divergence' },
+                              ].map((sig, i) => (
+                                <div
+                                  key={sig.symbol}
+                                  className={`ai-signal-card ${sig.signal === 'BULLISH' ? 'bull' : 'bear'}`}
+                                  style={{ animationDelay: `${0.35 + i * 0.1}s` }}
+                                  onClick={() => handleSelectCompany({ symbol: sig.symbol, price: null })}
+                                >
+                                  <div className="asc-glow" />
+                                  <div className="asc-top">
+                                    <div>
+                                      <div className="asc-symbol">{sig.symbol}</div>
+                                      <div className="asc-label">{sig.label}</div>
+                                    </div>
+                                    <span className={`asc-badge ${sig.signal === 'BULLISH' ? 'bull' : 'bear'}`}>
+                                      {sig.signal === 'BULLISH' ? '▲' : '▼'} {sig.signal}
+                                    </span>
+                                  </div>
+                                  <div className="asc-reason">{sig.reason}</div>
+                                  <div className="asc-conf-row">
+                                    <span className="asc-conf-label">AI Confidence</span>
+                                    <span className="asc-conf-val">{sig.confidence}%</span>
+                                  </div>
+                                  <div className="asc-conf-bar">
+                                    <div
+                                      className={`asc-conf-fill ${sig.signal === 'BULLISH' ? 'bull' : 'bear'}`}
+                                      style={{ width: `${sig.confidence}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Quick Launch — gold hover */}
+                            <div className="welcome-divider" style={{ marginTop: '20px' }}>
+                              <div className="divider-line" />
+                              <span className="divider-text">⚡ Quick Launch</span>
+                              <div className="divider-line" />
+                            </div>
+                            <div className="quick-stocks-grid">
+                              {[
+                                { symbol: 'RELIANCE', label: 'Reliance' },
+                                { symbol: 'TCS', label: 'TCS' },
+                                { symbol: 'HDFCBANK', label: 'HDFC Bank' },
+                                { symbol: 'INFY', label: 'Infosys' },
+                                { symbol: 'ICICIBANK', label: 'ICICI Bank' },
+                                { symbol: 'WIPRO', label: 'Wipro' },
+                                { symbol: 'SBIN', label: 'SBI' },
+                                { symbol: 'TATAMOTORS', label: 'Tata Motors' },
+                                { symbol: 'ADANIENT', label: 'Adani Ent.' },
+                                { symbol: 'BAJFINANCE', label: 'Bajaj Finance' },
+                              ].map((stock, i) => (
+                                <button
+                                  key={stock.symbol}
+                                  className="quick-chip pro-chip"
+                                  style={{ animationDelay: `${0.5 + i * 0.04}s` }}
+                                  onClick={() => handleSelectCompany({ symbol: stock.symbol, price: null })}
+                                >
+                                  <span className="qc-symbol pro-sym">{stock.symbol}</span>
+                                  <span className="qc-label">{stock.label}</span>
+                                </button>
+                              ))}
+                            </div>
+
+                            {recentStocks.length > 0 && (
+                              <div className="welcome-recent" style={{ marginTop: '16px' }}>
+                                <span className="welcome-recent-label">Recent</span>
+                                {recentStocks.slice(0, 5).map(s => (
+                                  <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                                    {s.symbol}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          /* ── FREE TRIAL WELCOME ── */
+                          <>
+                            <div className="welcome-header">
+                              <div className="welcome-logo-mark">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h2 className="welcome-title">Market Pulse</h2>
+                                <p className="welcome-sub">Live indices · Search any NSE symbol to begin AI forecasting</p>
+                              </div>
+                              <div className={`welcome-market-badge ${marketOpen ? 'open' : 'closed'}`}>
+                                <span className="status-dot" />
+                                {marketOpen ? 'NSE LIVE' : 'NSE CLOSED'}
+                              </div>
+                            </div>
+
+                            <div className="index-cards-grid">
+                              {marketIndices.length > 0 ? marketIndices.map((idx, i) => (
+                                <div
+                                  key={idx.name}
+                                  className={`index-card ${idx.change_pct >= 0 ? 'bull' : 'bear'}`}
+                                  style={{ animationDelay: `${i * 0.08}s` }}
+                                  onClick={() => handleSelectCompany({ symbol: idx.name.replace(' ', ''), price: null })}
+                                >
+                                  <div className="ic-glow" />
+                                  <div className="ic-top">
+                                    <span className="ic-name">{idx.name}</span>
+                                    <span className={`ic-badge ${idx.change_pct >= 0 ? 'bull' : 'bear'}`}>
+                                      {idx.change_pct >= 0 ? '▲' : '▼'} {Math.abs(idx.change_pct).toFixed(2)}%
+                                    </span>
+                                  </div>
+                                  <div className="ic-price">{idx.price.toLocaleString('en-IN')}</div>
+                                  <div className="ic-bar">
+                                    <div className="ic-bar-fill" style={{ width: `${Math.min(Math.abs(idx.change_pct) * 10, 100)}%` }} />
+                                  </div>
+                                </div>
+                              )) : [1, 2, 3].map(i => (
+                                <div key={i} className="index-card skeleton" style={{ animationDelay: `${i * 0.1}s` }}>
+                                  <div className="skeleton-line" style={{ width: '60%', height: '12px', marginBottom: '12px' }} />
+                                  <div className="skeleton-line" style={{ width: '80%', height: '24px' }} />
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="welcome-divider">
+                              <div className="divider-line" />
+                              <span className="divider-text">⚡ Quick Launch</span>
+                              <div className="divider-line" />
+                            </div>
+
+                            <div className="quick-stocks-grid">
+                              {[
+                                { symbol: 'RELIANCE', label: 'Reliance' },
+                                { symbol: 'TCS', label: 'TCS' },
+                                { symbol: 'HDFCBANK', label: 'HDFC Bank' },
+                                { symbol: 'INFY', label: 'Infosys' },
+                                { symbol: 'ICICIBANK', label: 'ICICI Bank' },
+                                { symbol: 'WIPRO', label: 'Wipro' },
+                                { symbol: 'SBIN', label: 'SBI' },
+                                { symbol: 'TATAMOTORS', label: 'Tata Motors' },
+                                { symbol: 'ADANIENT', label: 'Adani Ent.' },
+                                { symbol: 'BAJFINANCE', label: 'Bajaj Finance' },
+                              ].map((stock, i) => (
+                                <button
+                                  key={stock.symbol}
+                                  className="quick-chip"
+                                  style={{ animationDelay: `${0.2 + i * 0.04}s` }}
+                                  onClick={() => handleSelectCompany({ symbol: stock.symbol, price: null })}
+                                >
+                                  <span className="qc-symbol">{stock.symbol}</span>
+                                  <span className="qc-label">{stock.label}</span>
+                                </button>
+                              ))}
+                            </div>
+
+                            {recentStocks.length > 0 && (
+                              <div className="welcome-recent">
+                                <span className="welcome-recent-label">Recent</span>
+                                {recentStocks.slice(0, 5).map(s => (
+                                  <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                                    {s.symbol}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
@@ -638,6 +959,53 @@ function Dashboard() {
             </div>
           )}
 
+          {isPro && alerts.length > 0 && (
+            <div className="widget">
+              <div className="widget-title">Active Alerts</div>
+              <div className="alerts-list">
+                {alerts.map((a, i) => (
+                  <div key={`${a.symbol}-${a.target}`} className={`alert-item ${a.active ? 'active' : 'triggered'}`}>
+                    <div className="ai-info">
+                      <span className="ai-sym">{a.symbol}</span>
+                      <span className="ai-target">{a.type === 'above' ? '≥' : '≤'} ₹{a.target.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="ai-actions">
+                      {!a.active && <span className="ai-status">HIT</span>}
+                      <button className="ai-del" onClick={() => removeAlert(a.symbol, a.target)}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isPro && (
+            <div className="widget">
+              <div className="widget-title">Sector Heatmap</div>
+              <div className="heatmap-grid">
+                {[
+                  { name: 'IT', change: 1.2 },
+                  { name: 'BANK', change: -0.8 },
+                  { name: 'AUTO', change: 2.1 },
+                  { name: 'PHARMA', change: 0.5 },
+                  { name: 'FMCG', change: -0.3 },
+                  { name: 'METAL', change: 1.7 },
+                  { name: 'MEDIA', change: -1.2 },
+                  { name: 'REALTY', change: 0.9 },
+                ].map((s, i) => (
+                  <div 
+                    key={s.name} 
+                    className={`heatmap-cell ${s.change >= 0 ? 'bull' : 'bear'}`}
+                    style={{ animationDelay: `${i * 0.05}s` }}
+                  >
+                    <span className="hm-name">{s.name}</span>
+                    <span className="hm-val">{s.change >= 0 ? '+' : ''}{s.change}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="widget">
             <div className="widget-title">Market Overview</div>
             <div className="indices-list">
@@ -683,10 +1051,10 @@ function Dashboard() {
             <div style={{display: 'flex', gap: '20px'}}>
               <div style={{flex: 1, padding: '30px', background: 'var(--surface-bg)', border: '1px solid var(--border)', borderRadius: '12px'}}>
                 <h3 style={{color: '#8c9bad', fontSize: '1.2rem'}}>Basic</h3>
-                <div style={{fontSize: '2.5rem', color: '#fff', fontWeight: 'bold', margin: '20px 0'}}>$0<span style={{fontSize: '1rem', color: '#8c9bad'}}>/mo</span></div>
+                <div style={{fontSize: '2.5rem', color: '#fff', fontWeight: 'bold', margin: '20px 0'}}>$0<span style={{fontSize: '1rem', color: '#8c9bad'}}>/10 days</span></div>
                 <ul className="feature-list" style={{marginBottom: '30px'}}>
-                  <li style={{fontSize: '0.9rem'}}>1-Day Forecast Horizon</li>
-                  <li style={{fontSize: '0.9rem'}}>Delayed Historical Data</li>
+                  <li style={{fontSize: '0.9rem'}}>10-Day Forecast Chart (Day 1 Unlocked)</li>
+                  <li style={{fontSize: '0.9rem'}}>Historical Data Access</li>
                   <li style={{fontSize: '0.9rem'}}>Basic Charting</li>
                 </ul>
                 <button className="tv-btn-secondary-large" style={{width: '100%'}} disabled>Current Plan</button>
@@ -697,7 +1065,7 @@ function Dashboard() {
                 <h3 style={{color: '#fff', fontSize: '1.2rem'}}>Pro Terminal</h3>
                 <div style={{fontSize: '2.5rem', color: '#fff', fontWeight: 'bold', margin: '20px 0'}}>$49<span style={{fontSize: '1rem', color: '#8c9bad'}}>/mo</span></div>
                 <ul className="feature-list" style={{marginBottom: '30px'}}>
-                  <li style={{fontSize: '0.9rem'}}>10-Day AI Forecast Horizon</li>
+                  <li style={{fontSize: '0.9rem'}}>Full AI Forecast Horizon</li>
                   <li style={{fontSize: '0.9rem'}}>Real-time WebSockets</li>
                   <li style={{fontSize: '0.9rem'}}>AI Confidence Scores</li>
                   <li style={{fontSize: '0.9rem'}}>No Latency Limits</li>
@@ -711,7 +1079,140 @@ function Dashboard() {
           </div>
         </div>
       )}
+      {/* Add Alert Modal */}
+      {showAddAlert && (
+        <div className="custom-modal-overlay">
+          <div className="custom-modal">
+            <div className="modal-header">
+              <h3>Set Price Alert for {prediction?.symbol}</h3>
+              <button onClick={() => setShowAddAlert(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Target Price (₹)</label>
+                <input 
+                  type="number" 
+                  value={alertForm.target} 
+                  onChange={e => setAlertForm({...alertForm, target: e.target.value})}
+                  placeholder="Enter price..."
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label>Alert when price is:</label>
+                <div className="toggle-group">
+                  <button 
+                    className={alertForm.type === 'above' ? 'active' : ''} 
+                    onClick={() => setAlertForm({...alertForm, type: 'above'})}
+                  >
+                    Above or Equal
+                  </button>
+                  <button 
+                    className={alertForm.type === 'below' ? 'active' : ''} 
+                    onClick={() => setAlertForm({...alertForm, type: 'below'})}
+                  >
+                    Below or Equal
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowAddAlert(false)}>Cancel</button>
+              <button className="btn-save" onClick={() => {
+                const target = parseFloat(alertForm.target);
+                if (target > 0) {
+                  addAlert(prediction!.symbol, target, alertForm.type);
+                  setShowAddAlert(false);
+                }
+              }}>Set Alert</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Footer */}
+      <Footer isPro={isPro} wsStatus={wsStatus} />
     </div>
+  );
+}
+
+// --- Sub-components ---
+
+function Footer({ isPro, wsStatus }: { isPro: boolean, wsStatus: string }) {
+  return (
+    <footer className={`footer ${isPro ? 'pro-footer' : ''}`}>
+      <div className="footer-content">
+        <div className="footer-grid">
+          <div className="footer-section brand-section">
+            <div className="footer-logo">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              TrendMaster <span>{isPro ? 'PRO' : 'FREE'}</span>
+            </div>
+            <p className="footer-desc">
+              Empowering NSE traders with next-gen Transformer AI. Real-time patterns, 10-day forecasts, and high-confidence signals.
+            </p>
+            <div className="footer-socials">
+              <span className="social-icon">𝕏</span>
+              <span className="social-icon">in</span>
+              <span className="social-icon">✉</span>
+            </div>
+          </div>
+
+          <div className="footer-section">
+            <h4>Platform</h4>
+            <ul>
+              <li><a href="#markets">Markets</a></li>
+              <li><a href="#signals">AI Signals</a></li>
+              <li><a href="#heatmap">Sector Heatmap</a></li>
+              <li><a href="#alerts">Price Alerts</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-section">
+            <h4>Resources</h4>
+            <ul>
+              <li><a href="#help">Help Center</a></li>
+              <li><a href="#api">API Documentation</a></li>
+              <li><a href="#blog">Market Insights</a></li>
+              <li><a href="#status">System Status</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-section status-section">
+            <h4>System Status</h4>
+            <div className="status-pills">
+              <div className="status-pill">
+                <span className={`dot ${wsStatus === 'connected' ? 'online' : 'reconnecting'}`}></span>
+                Live Feed: {wsStatus === 'connected' ? 'Stable' : 'Connecting...'}
+              </div>
+              <div className="status-pill">
+                <span className="dot online"></span>
+                AI Core: Operational
+              </div>
+              <div className="status-pill">
+                <span className="dot online"></span>
+                API: 12ms
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <div className="footer-legal">
+            <span>© 2026 TrendMaster AI. All rights reserved.</span>
+            <div className="legal-links">
+              <a href="#privacy">Privacy</a>
+              <a href="#terms">Terms</a>
+              <a href="#disclaimer">Disclaimer</a>
+            </div>
+          </div>
+          <div className="footer-disclaimer">
+            <b>Disclaimer:</b> Trading involves significant risk. AI predictions are based on historical patterns and are for educational purposes only. Always consult a financial advisor.
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }
 
