@@ -49,7 +49,7 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden; /* Prevent body scroll, handle scroll in content areas */
+
 }
 
 /* Base Typography */
@@ -62,6 +62,7 @@ h1, h2, h3, h4 {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden;
 }
 
 /* ==========================================================================
@@ -698,4 +699,135 @@ h1, h2, h3, h4 {
   0% { transform: scale(0.95); opacity: 1; }
   50% { transform: scale(1.1); opacity: 0.5; }
   100% { transform: scale(0.95); opacity: 1; }
+}
+
+/* ==========================================================================
+   Responsive / Mobile Layout
+   ========================================================================== */
+@media (max-width: 900px) {
+  body {
+    overflow: auto; /* allow full page scroll on mobile */
+  }
+
+  .App.dark-theme {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .dashboard {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-column {
+    flex: none;
+    overflow-y: visible;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    overflow-y: visible;
+  }
+
+  .navbar {
+    padding: 0 1rem;
+  }
+
+  .search-box {
+    max-width: 200px; /* Compress search bar on mobile */
+  }
+
+  .stock-price-container {
+    text-align: left;
+    align-items: flex-start;
+    margin-top: 8px;
+  }
+
+  .chart-header {
+    flex-direction: column;
+  }
+
+  table.prediction-grid th, table.prediction-grid td {
+    padding: 8px 10px; /* Reduce padding for mobile table */
+  }
+}
+
+@media (max-width: 600px) {
+  .logo span {
+    display: none; /* Hide 'PRO' badge on very small screens to save space */
+  }
+  
+  .search-box {
+    position: absolute;
+    top: 60px;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+    z-index: 999;
+  }
+
+  .dashboard {
+    margin-top: 45px; /* Adjust for pushed search box */
+  }
+}
+
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+.animate-fade-in-delayed {
+  animation: fadeInUp 0.5s ease-out 0.15s forwards;
+  opacity: 0;
+}
+
+/* ==========================================================================
+   Paywall & Subscription Styles
+   ========================================================================== */
+
+.locked-blur {
+  filter: blur(5px);
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.pro-overlay-lock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.pro-overlay-lock button {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+}
+
+.pro-overlay-lock button:hover {
+  background: rgba(41, 98, 255, 0.4) !important;
+  transform: scale(1.05);
+}
+
+.unlock-row-cta td {
+  text-align: center;
+  padding: 24px 10px !important;
+  background: linear-gradient(to top, rgba(41, 98, 255, 0.1), transparent);
+  border-bottom: none !important;
+}
+
+.unlock-row-cta button {
+  box-shadow: 0 4px 12px rgba(41, 98, 255, 0.3);
 }

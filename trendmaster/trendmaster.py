@@ -9,7 +9,10 @@ from tqdm import tqdm
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 import os
-from jugaad_trader import Zerodha
+
+# jugaad_trader is an optional broker dependency (Zerodha-only).
+# It is imported lazily inside authenticate() so the library can be used
+# without a Zerodha account (e.g., with yfinance data in the API server).
 
 # ---------------------- Utils ----------------------
 
@@ -53,7 +56,19 @@ class DataLoader:
         self.instruments_cache = {}
 
     def authenticate(self, user_id=None, password=None, twofa=None):
-        """Authenticate with Zerodha."""
+        """Authenticate with Zerodha.
+        
+        Requires the optional `jugaad-trader` package:
+            pip install jugaad-trader
+        """
+        try:
+            from jugaad_trader import Zerodha
+        except ImportError as exc:
+            raise ImportError(
+                "jugaad-trader is required for Zerodha authentication. "
+                "Install it with: pip install jugaad-trader"
+            ) from exc
+
         if not all([user_id, password, twofa]):
             user_id = input("Zerodha User ID: ")
             password = input("Zerodha Password: ")
@@ -87,7 +102,7 @@ class DataLoader:
         data = self.kite.historical_data(tkn, from_date, to_date, interval)
         return pd.DataFrame(data)
 
-<<<<<<< feature/new
+
     def add_technical_indicators(self, data):
         """Add technical indicators to the DataFrame.
         
@@ -95,8 +110,16 @@ class DataLoader:
         Returns the DataFrame with new columns, NaN rows dropped.
         """
         df = data.copy()
-        df.columns = [c.lower() for c in df.columns]
         
+        # Standardize column names to lowercase for the library
+        column_map = {c: c.lower() for c in df.columns if c.lower() in ['open', 'high', 'low', 'close', 'volume']}
+        df = df.rename(columns=column_map)
+        
+        if 'close' not in df.columns:
+            # Fallback if names are still not standard
+            if 'Close' in df.columns: df = df.rename(columns={'Close': 'close'})
+            else: raise ValueError(f"Missing required 'close' column in data. Found: {df.columns.tolist()}")
+
         # RSI (14-period)
         delta = df['close'].diff()
         gain = delta.where(delta > 0, 0.0)
@@ -141,11 +164,8 @@ class DataLoader:
                     scaled = self.scalers[col].fit_transform(values)
                 else:
                     if col not in self.scalers:
-                        # Fallback for old models or if not fitted
-                        self.scalers[col] = MinMaxScaler(feature_range=(-1, 1))
-                        scaled = self.scalers[col].fit_transform(values)
-                    else:
-                        scaled = self.scalers[col].transform(values)
+                        raise ValueError(f"Scaler for column '{col}' not fitted. Call with train=True first.")
+                    scaled = self.scalers[col].transform(values)
                 result.append(scaled.reshape(-1))
             # Also keep the single-column scaler in sync with 'close'
             if 'close' in columns:
@@ -158,21 +178,8 @@ class DataLoader:
             if train:
                 amplitude_scaled = self.scaler.fit_transform(amplitude)
             else:
-                try:
-                    amplitude_scaled = self.scaler.transform(amplitude)
-                except:
-                    amplitude_scaled = self.scaler.fit_transform(amplitude)
+                amplitude_scaled = self.scaler.transform(amplitude)
             return amplitude_scaled.reshape(-1)
-=======
-    def preprocess_data(self, data, column='close', fit_scaler=False):
-        """Preprocess the data for model input."""
-        amplitude = data[column].to_numpy().reshape(-1, 1)
-        if fit_scaler:
-            amplitude_scaled = self.scaler.fit_transform(amplitude)
-        else:
-            amplitude_scaled = self.scaler.transform(amplitude)
-        return amplitude_scaled.reshape(-1)
->>>>>>> main
 
     def save_scaler(self, filename='scaler.joblib'):
         """Save the fitted scaler to a file."""
@@ -199,13 +206,33 @@ class DataLoader:
             sequences.append((train_seq, train_label))
         return sequences
 
-    def load_or_download_data(self, symbol, from_date, to_date, force_download=False):
-        """Load data from file or download if not available."""
+    def load_or_download_data(self, symbol, from_date, to_date, force_download=False, source='zerodha'):
+        """Load data from file or download if not available.
+        
+        Args:
+            symbol: Stock symbol.
+            from_date: Start date.
+            to_date: End date.
+            force_download: If True, skip local cache.
+            source: 'zerodha' or 'yfinance'.
+        """
         filename = f"{symbol}_data.joblib"
         if os.path.exists(filename) and not force_download:
             data = joblib.load(filename)
         else:
-            data = self.get_stock_data(symbol, from_date, to_date)
+            if source == 'zerodha' and self.kite:
+                data = self.get_stock_data(symbol, from_date, to_date)
+            else:
+                # Fallback to yfinance
+                import yfinance as yf
+                yf_symbol = symbol if '.' in symbol else f"{symbol}.NS"
+                ticker = yf.Ticker(yf_symbol)
+                # Note: 'period' mapping might be needed if using fixed dates
+                data = ticker.history(start=from_date, end=to_date)
+                # Cleanup yfinance data
+                data.index.name = 'date'
+                data = data.rename(columns={'Open':'open', 'High':'high', 'Low':'low', 'Close':'close', 'Volume':'volume'})
+            
             joblib.dump(data, filename)
         return data
 
@@ -263,18 +290,16 @@ class TransAm(nn.Module):
         initrange = 0.1
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
+        if hasattr(self, 'input_proj'):
+            self.input_proj.bias.data.zero_()
+            self.input_proj.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src):
         if hasattr(self, 'input_proj'):
             src = self.input_proj(src)
         # If not, it means the model was trained without input_proj (older version).
         # We assume the input dimensions are already correct for pos_encoder.
-        if src.ndim == 3 and src.shape[0] != 1 and src.shape[1] == 1:
-            # likely already (S, N, E)
-            pass
-        else:
-            # assume (N, S, E)
-            src = src.transpose(0, 1)
+        src = src.transpose(0, 1)
         src = self.pos_encoder(src)
 
         # Handle old models that had src_mask and newer ones that don't
@@ -291,6 +316,57 @@ class TransAm(nn.Module):
         output = self.decoder(output)
         output = output.transpose(0, 1)
         return output
+
+    @staticmethod
+    def load_model(path, device=torch.device('cpu')):
+        """Robustly load a model from path, handling whole modules and state_dicts.
+        
+        Sets up __main__ attributes and monkeypatches for older torch/model versions.
+        """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Model file not found: {path}")
+
+        # Ensure TransAm and PositionalEncoding are in __main__ for torch.load
+        import __main__
+        __main__.TransAm = TransAm
+        __main__.PositionalEncoding = PositionalEncoding
+
+        # Monkeypatch _LinearWithBias for older torch versions
+        import torch.nn.modules.linear
+        if not hasattr(torch.nn.modules.linear, '_LinearWithBias'):
+            torch.nn.modules.linear._LinearWithBias = torch.nn.modules.linear.Linear
+
+        # Load with weights_only=False because whole modules are used in some versions
+        try:
+            checkpoint = torch.load(path, map_location=device, weights_only=False)
+        except Exception as e:
+            # Fallback for newer torch security restrictions if possible
+            checkpoint = torch.load(path, map_location=device)
+
+        if isinstance(checkpoint, dict):
+            # It's a state_dict
+            # Inspect keys to guess input_size and d_model
+            input_size = 1
+            if 'input_proj.weight' in checkpoint:
+                d_model = checkpoint['input_proj.weight'].shape[0]
+                input_size = checkpoint['input_proj.weight'].shape[1]
+            else:
+                d_model = 32 # Fallback default
+            
+            # Note: We prioritize 32 as d_model based on current library training habits
+            model = TransAm(input_size=input_size, d_model=d_model).to(device)
+            model.load_state_dict(checkpoint, strict=False)
+        else:
+            # It's a whole module
+            model = checkpoint
+            # Patch missing attributes for older torch versions if needed
+            for module in model.modules():
+                if isinstance(module, torch.nn.TransformerEncoderLayer):
+                    if not hasattr(module, 'norm_first'):
+                        module.norm_first = False
+        
+        model.eval()
+        return model
 
     def _generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
@@ -406,8 +482,7 @@ class Inferencer:
         self.device = device
         self.data_loader = data_loader
 
-<<<<<<< feature/new
-    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None):
+    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None, return_confidence=False):
         """Make predictions for a stock.
         
         Args:
@@ -418,42 +493,34 @@ class Inferencer:
             future_steps: Number of future steps to predict.
             columns: List of feature column names for multi-feature mode.
             data: Pre-fetched DataFrame to use instead of downloading.
+            return_confidence: If True, returns (predictions_df, confidence_score).
         
         Returns:
-            DataFrame with 'Date' and 'Predicted_Close' columns.
+            DataFrame with 'Date' and 'Predicted_Close' columns, or (DF, float) if return_confidence is True.
         """
         if data is not None:
             stock_data = data
         else:
             stock_data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
-            # Check if we need to add technical indicators if requested but not present
-            if columns and any(col in columns for col in ['rsi', 'ema_20', 'ema_50', 'macd', 'signal']) and not all(col in stock_data.columns for col in columns):
-                stock_data = self.data_loader.add_technical_indicators(stock_data)
+
         
         is_multi = columns is not None and len(columns) > 1
         
         if is_multi:
             processed_data = self.data_loader.preprocess_data(stock_data, columns=columns, train=False)
             real_seq = processed_data[-input_window:]  # shape: (input_window, num_features)
-            # Pad with zeros for future steps (vectorized prediction mode)
+            # Pad with zeros for future steps
             zero_pad = np.zeros((future_steps, len(columns)))
             input_seq = np.vstack([real_seq, zero_pad])
             input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)  # (1, seq_len, F)
         else:
-            col = columns[0] if columns else 'close'
-            processed_data = self.data_loader.preprocess_data(stock_data, column=col, train=False)
+            processed_data = self.data_loader.preprocess_data(stock_data, train=False)
             real_seq = processed_data[-input_window:]
             # Pad with zeros for future steps
             zero_pad = np.zeros(future_steps)
             input_seq = np.concatenate([real_seq, zero_pad])
             input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
-=======
-    def predict(self, symbol, from_date, to_date, input_window, future_steps):
-        data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
-        processed_data = self.data_loader.preprocess_data(data, fit_scaler=False)
-        input_seq = processed_data[-input_window:]
-        input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
->>>>>>> main
+
         
         self.model.eval()
         with torch.no_grad():
@@ -462,33 +529,35 @@ class Inferencer:
             predictions = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
         
         # Use the close scaler for inverse transform
-        if is_multi:
-            close_scaler = self.data_loader.scalers.get('close')
-        else:
-            close_scaler = self.data_loader.scaler
-            
-        if close_scaler is None:
-             # Try fallback if not found
-             close_scaler = getattr(self.data_loader, 'scaler', None)
-             
+        close_scaler = self.data_loader.scalers.get('close', getattr(self.data_loader, 'scaler', None))
         if close_scaler is None:
              raise ValueError("Scaler not found. Ensure train=True was called or Data loader initialized properly.")
-        
-        predictions = close_scaler.inverse_transform(predictions)
+        predictions_rescaled = close_scaler.inverse_transform(predictions)
         
         last_date = pd.to_datetime(stock_data.index[-1])
         future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
-        predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions.flatten()})
+        predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions_rescaled.flatten()})
         
+        if return_confidence:
+            # Compute a real confidence score based on prediction smoothness.
+            # We measure the coefficient of variation (std/mean) of the predicted daily returns.
+            pred_flat = predictions_rescaled.flatten()
+            if len(pred_flat) > 1:
+                daily_returns = np.diff(pred_flat) / (np.abs(pred_flat[:-1]) + 1e-9)
+                cv = np.std(daily_returns) / (np.mean(np.abs(daily_returns)) + 1e-9)
+                confidence_score = float(np.clip(100 * (1 / (1 + cv)), 0, 100))
+            else:
+                confidence_score = 50.0
+            return predictions_df, round(confidence_score, 1)
+
         return predictions_df
 
     def evaluate(self, test_data, batch_size):
         self.model.eval()
-        total_loss = 0
-        total_mae = 0
-        total_samples = 0
-        criterion = torch.nn.MSELoss()
-        mae_criterion = torch.nn.L1Loss()
+        total_mse_loss = 0
+        total_mae_loss = 0
+        criterion_mse = torch.nn.MSELoss()
+        criterion_mae = torch.nn.L1Loss()
         
         with torch.no_grad():
             for i in range(0, len(test_data), batch_size):
@@ -505,20 +574,15 @@ class Inferencer:
                     targets = targets.unsqueeze(-1)
                 
                 outputs = self.model(inputs)
-                loss = criterion(outputs, targets)
-                mae_loss = mae_criterion(outputs, targets)
-                
-                batch_size_actual = inputs.size(0)
-                total_loss += loss.item() * batch_size_actual
-                total_mae += mae_loss.item() * batch_size_actual
-                total_samples += batch_size_actual
+                mse_loss = criterion_mse(outputs, targets)
+                mae_loss = criterion_mae(outputs, targets)
+                total_mse_loss += mse_loss.item()
+                total_mae_loss += mae_loss.item()
         
-        mse = total_loss / total_samples
-        rmse = math.sqrt(mse)
-        mae = total_mae / total_samples
-        
-        print(f"Test MSE: {mse:.6f}, RMSE: {rmse:.6f}, MAE: {mae:.6f}")
-        return mse
+        avg_mse = total_mse_loss / (len(test_data) // batch_size + 1)
+        avg_mae = total_mae_loss / (len(test_data) // batch_size + 1)
+        print(f"Test Loss (MSE): {avg_mse:.6f} | Test Error (MAE): {avg_mae:.6f}")
+        return avg_mse
 
 # ---------------------- Package Metadata ----------------------
 

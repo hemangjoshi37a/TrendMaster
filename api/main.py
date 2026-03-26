@@ -28,8 +28,26 @@ symbol_to_name = {}
 data_loader = DataLoader() # For preprocessing and scaling
 
 # --- Prediction Cache (TTL = 300s) ---
-prediction_cache: Dict[str, dict] = {}  # {"SYMBOL_period": {"data": ..., "timestamp": ...}}
+CACHE_FILE = os.path.join(BASE_DIR, "api", "api_cache.json")
 CACHE_TTL = 300  # 5 minutes
+
+def load_cache():
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_cache():
+    try:
+        with open(CACHE_FILE, "w") as f:
+            json.dump(prediction_cache, f)
+    except Exception as e:
+        print(f"Failed to save cache: {e}")
+
+prediction_cache: Dict[str, dict] = load_cache()  # {"SYMBOL_period": {"data": ..., "timestamp": ...}}
 
 # --- Model Management ---
 models: Dict[str, nn.Module] = {}
@@ -210,11 +228,24 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
         
         hist_dates = df.index[-history_to_show:].strftime('%Y-%m-%d').tolist()
         future_dates = predictions_df['Date'].dt.strftime('%Y-%m-%d').tolist()
+
+        # Compute a real confidence score based on prediction smoothness.
+        # We measure the coefficient of variation (std/mean) of the predicted
+        # daily returns. Very erratic predictions → low confidence.
+        # Score is mapped to [0, 100] and clamped.
+        if len(pred_rescaled) > 1:
+            daily_returns = np.diff(pred_rescaled) / (np.abs(pred_rescaled[:-1]) + 1e-9)
+            cv = np.std(daily_returns) / (np.mean(np.abs(daily_returns)) + 1e-9)
+            # cv near 0 = very smooth (high confidence), cv >> 1 = erratic (low)
+            confidence_score = float(np.clip(100 * (1 / (1 + cv)), 0, 100))
+        else:
+            confidence_score = 50.0
         
         return {
             "dates": hist_dates + future_dates,
             "prices": [float(p) for p in full_series],
-            "prediction_start_index": history_to_show
+            "prediction_start_index": history_to_show,
+            "confidence_score": round(confidence_score, 1)
         }
     except Exception as e:
         print(f"Prediction error for {symbol}: {e}")
@@ -228,7 +259,7 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
             "dates": hist_dates,
             "prices": [float(p) for p in close_prices],
             "prediction_start_index": len(close_prices),
-            "warning": f"Error during prediction: {str(e)}"
+            "warning": f"Model inference failed: {type(e).__name__} - {str(e)[:100]}"
         }
 
 # --- WebSocket & Endpoints ---
@@ -252,17 +283,22 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 async def live_market_data_loop():
+    async def fetch_and_broadcast(symbol: str):
+        try:
+            ticker = yf.Ticker(f"{symbol}.NS")
+            price = ticker.fast_info['last_price']
+            await manager.broadcast(symbol, {
+                "symbol": symbol,
+                "price": round(float(price), 2),
+                "timestamp": pd.Timestamp.now().isoformat()
+            })
+        except Exception:
+            pass
+
     while True:
-        for symbol in list(manager.active_connections.keys()):
-            try:
-                ticker = yf.Ticker(f"{symbol}.NS")
-                price = ticker.fast_info['last_price']
-                await manager.broadcast(symbol, {
-                    "symbol": symbol,
-                    "price": round(price, 2),
-                    "timestamp": pd.Timestamp.now().isoformat()
-                })
-            except: pass
+        symbols = list(manager.active_connections.keys())
+        if symbols:
+            await asyncio.gather(*(fetch_and_broadcast(s) for s in symbols))
         await asyncio.sleep(10)
 
 @app.get("/api/search")
@@ -305,6 +341,7 @@ def predict_stock(
         }
         # Store in cache
         prediction_cache[cache_key] = {"data": result, "timestamp": time.time()}
+        save_cache()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

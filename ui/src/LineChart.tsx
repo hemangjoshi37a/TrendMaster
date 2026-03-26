@@ -9,9 +9,10 @@ interface PredictionData {
 
 interface LineChartProps {
   data: PredictionData;
+  isPro?: boolean;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const histSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
@@ -103,19 +104,27 @@ const LineChart: React.FC<LineChartProps> = ({ data }) => {
     if (!histSeriesRef.current || !predSeriesRef.current || !predictionData) return;
 
     try {
-        const histData = predictionData.dates
-          .slice(0, predictionData.prediction_start_index)
-          .map((date, i) => ({
-            time: date,
-            value: predictionData.prices[i],
-          }));
+        const { dates, prices, prediction_start_index: psi } = predictionData;
 
-        const futureData = predictionData.dates
-          .slice(predictionData.prediction_start_index - 1)
-          .map((date, i) => ({
-            time: date,
-            value: predictionData.prices[i + predictionData.prediction_start_index - 1],
-          }));
+        // Historical series: all data up to and including the last known price
+        const histData = dates
+          .slice(0, psi)
+          .map((date, i) => ({ time: date, value: prices[i] }));
+
+        // Prediction series: starts from the last historical point (as anchor)
+        // so the two series connect seamlessly with no visual gap.
+        const anchorPoint = { time: dates[psi - 1], value: prices[psi - 1] };
+        
+        let forecastPoints = dates
+          .slice(psi)
+          .map((date, i) => ({ time: date, value: prices[psi + i] }));
+          
+        // Limit to 1 day forecast for free users
+        if (!isPro) {
+          forecastPoints = forecastPoints.slice(0, 1);
+        }
+        
+        const futureData = [anchorPoint, ...forecastPoints];
 
         histSeriesRef.current.setData(histData);
         predSeriesRef.current.setData(futureData);
@@ -132,7 +141,7 @@ const LineChart: React.FC<LineChartProps> = ({ data }) => {
     if (data) {
       updateChartData(data);
     }
-  }, [data]);
+  }, [data, isPro]);
 
   return (
     <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />

@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import LandingPage from './LandingPage';
-import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
+import './App.css';
 
 interface Company {
   symbol: string;
@@ -43,7 +41,7 @@ const TIMEFRAME_MAP: { label: string; period: TimeframePeriod }[] = [
   { label: 'MAX', period: 'max' },
 ];
 
-function Dashboard() {
+function ProDashboard() {
   const [query, setQuery] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Company[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
@@ -57,43 +55,7 @@ function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframePeriod>('1y');
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([]);
-  const location = useLocation();
   const [currentSymbol, setCurrentSymbol] = useState<string>('');
-  const [isPro, setIsPro] = useState<boolean>(location.state?.isPro || false);
-  const [showPricing, setShowPricing] = useState<boolean>(false);
-
-  // --- Trial / Subscription Expiry Logic ---
-  const TRIAL_DAYS = 10;
-  const PRO_DAYS = 30;
-
-  // Persist and read account metadata from localStorage
-  const getAccountMeta = () => {
-    const raw = localStorage.getItem('tm_account');
-    return raw ? JSON.parse(raw) : null;
-  };
-
-  const saveAccountMeta = (meta: { isPro: boolean; startDate: string }) => {
-    localStorage.setItem('tm_account', JSON.stringify(meta));
-  };
-
-  // On mount: if navigating from landing with state, record the sign-in date
-  useEffect(() => {
-    if (location.state?.isPro !== undefined) {
-      const existing = getAccountMeta();
-      // Only reset the start date if this is a fresh login (no existing record or plan changed)
-      if (!existing || existing.isPro !== location.state.isPro) {
-        saveAccountMeta({ isPro: location.state.isPro, startDate: new Date().toISOString() });
-      }
-    }
-  }, []);
-
-  const accountMeta = getAccountMeta();
-  const startDate = accountMeta ? new Date(accountMeta.startDate) : new Date();
-  const daysSinceStart = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysAllowed = isPro ? PRO_DAYS : TRIAL_DAYS;
-  const daysRemaining = Math.max(0, daysAllowed - daysSinceStart);
-  const isExpired = daysRemaining === 0;
-  // ---- end expiry logic ----
 
   const ws = useRef<WebSocket | null>(null);
   const isSelecting = useRef<boolean>(false);
@@ -281,11 +243,11 @@ function Dashboard() {
       {/* Top Navigation */}
       <nav className="navbar">
         <div className="brand">
-          <div className="logo">
+          <div className="logo" onClick={() => window.location.href='/'} style={{cursor: 'pointer'}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
             </svg>
-            TrendMaster <span>{isPro ? 'PRO' : 'FREE TRIAL'}</span>
+            TrendMaster <span style={{marginLeft: '8px', background: 'rgba(41,98,255,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#2962FF'}}>PRO</span>
           </div>
         </div>
 
@@ -327,70 +289,13 @@ function Dashboard() {
         </div>
       </nav>
 
-      {/* Trial / Expiry Banner */}
-      {!isExpired && (
-        <div style={{
-          background: isPro
-            ? 'linear-gradient(90deg, rgba(8,153,129,0.15), transparent)'
-            : daysRemaining <= 3
-              ? 'linear-gradient(90deg, rgba(242,54,69,0.15), transparent)'
-              : 'linear-gradient(90deg, rgba(41,98,255,0.12), transparent)',
-          borderBottom: '1px solid',
-          borderColor: isPro ? '#089981' : daysRemaining <= 3 ? '#f23645' : '#2962FF',
-          padding: '8px 24px',
-          fontSize: '0.85rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span style={{ color: '#d1d4dc' }}>
-            {isPro
-              ? `✅ Pro Terminal — ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining in your subscription`
-              : `⏳ Free Trial — ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining. Upgrade to keep full access.`}
-          </span>
-          {!isPro && (
-            <button
-              onClick={() => setShowPricing(true)}
-              style={{ fontSize: '0.8rem', padding: '4px 14px', background: '#2962FF', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
-            >
-              Upgrade to Pro
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Expired Full Paywall */}
-      {isExpired && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(15,18,26,0.97)',
-          backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', zIndex: 9999, textAlign: 'center', padding: '40px'
-        }}>
-          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>{isPro ? '🔄' : '🔒'}</div>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', marginBottom: '16px' }}>
-            {isPro ? 'Your Pro Subscription Has Expired' : 'Your 10-Day Free Trial Has Ended'}
-          </h2>
-          <p style={{ color: '#8c9bad', fontSize: '1.1rem', maxWidth: '500px', lineHeight: 1.6, marginBottom: '40px' }}>
-            {isPro
-              ? 'Renew your Pro plan to continue accessing real-time forecasts, confidence scores, and the full 10-day prediction horizon.'
-              : 'You have used your free 10-day trial. Subscribe to Pro to continue making AI-powered predictions on NSE stocks.'}
-          </p>
-          <button
-            onClick={() => setShowPricing(true)}
-            style={{ padding: '18px 48px', background: 'linear-gradient(90deg, #2962FF, #1E53E5)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 8px 32px rgba(41,98,255,0.4)' }}
-          >
-            {isPro ? 'Renew Pro — $49/mo' : 'Subscribe to Pro — $49/mo'}
-          </button>
-        </div>
-      )}
-
       {/* Main Dashboard Layout */}
       <main className="dashboard" onClick={() => setShowSuggestions(false)}>
         
         {/* Left/Center Column - Chart & Table */}
         <div className="main-column">
           <ErrorBoundary>
-            <div className="chart-panel">
+            <div className="chart-panel pro-glow-panel">
               {prediction ? (
                 <>
                   <div className="chart-header">
@@ -462,7 +367,7 @@ function Dashboard() {
                   )}
 
                   <div className="chart-container-wrapper animate-fade-in">
-                    <LineChart data={prediction} isPro={isPro} />
+                    <LineChart data={prediction} />
                   </div>
                 </>
               ) : (
@@ -542,36 +447,21 @@ function Dashboard() {
                         const change = price - prevPriceVal;
                         const changePct = (change / prevPriceVal) * 100;
 
-                        const isLockedRow = !isPro && i > 0;
-
                         return (
-                          <tr key={date} className={`animate-fade-in-delayed ${isLockedRow ? 'locked-blur' : ''}`} style={{ animationDelay: `${i * 0.05}s` }}>
+                          <tr key={date} className="animate-fade-in-delayed" style={{ animationDelay: `${i * 0.05}s` }}>
                             <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                            <td style={{ color: 'var(--text-bright)' }}>{isLockedRow ? '₹₹,₹₹₹.₹₹' : price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style={{ color: change >= 0 && !isLockedRow ? 'var(--success)' : change < 0 && !isLockedRow ? 'var(--error)' : 'var(--text-muted)' }}>
-                              {!isLockedRow ? `${change >= 0 ? '+' : ''}${changePct.toFixed(2)}%` : '---'}
+                            <td style={{ color: 'var(--text-bright)' }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                              {change >= 0 ? '+' : ''}{changePct.toFixed(2)}%
                             </td>
                             <td>
-                              {!isLockedRow ? (
-                                <span className={`trend-badge ${change >= 0 ? 'bullish' : 'bearish'}`}>
-                                  {change >= 0 ? 'BULL' : 'BEAR'}
-                                </span>
-                              ) : (
-                                <span className="trend-badge" style={{background: 'var(--border)', color: 'var(--text-muted)'}}>LOCK</span>
-                              )}
+                              <span className={`trend-badge ${change >= 0 ? 'bullish' : 'bearish'}`}>
+                                {change >= 0 ? 'BULL' : 'BEAR'}
+                              </span>
                             </td>
                           </tr>
                         );
                       })}
-                      {!isPro && (
-                        <tr className="unlock-row-cta">
-                          <td colSpan={4}>
-                            <button className="tv-btn-get-started" onClick={() => setShowPricing(true)}>
-                              Unlock 10-Day Forecast
-                            </button>
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
@@ -606,8 +496,8 @@ function Dashboard() {
                 <span className="stat-label">Prediction Horizon</span>
                 <span className="stat-value">10 Trading Days</span>
               </div>
-              <div className="stat-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} className={!isPro ? 'locked-blur' : ''}>
+              <div className="stat-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                   <span className="stat-label">Confidence Score</span>
                   <span className="stat-value" style={{
                     color: (prediction.confidence_score ?? 0) >= 65 ? 'var(--success)'
@@ -617,7 +507,7 @@ function Dashboard() {
                     {prediction.confidence_score !== undefined ? `${prediction.confidence_score}%` : 'N/A'}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }} className={!isPro ? 'locked-blur' : ''}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${prediction.confidence_score ?? 0}%`,
                     height: '100%',
@@ -627,13 +517,30 @@ function Dashboard() {
                     transition: 'width 0.6s ease'
                   }}></div>
                 </div>
-                {!isPro && (
-                  <div className="pro-overlay-lock">
-                    <button className="tv-btn-login" onClick={() => setShowPricing(true)} style={{fontSize: '0.8rem', padding: '4px 8px', background: 'rgba(41, 98, 255, 0.2)', borderRadius: '4px', border: '1px solid #2962FF', color: '#fff'}}>
-                      🔒 Upgrade to Pro
-                    </button>
-                  </div>
-                )}
+              </div>
+            </div>
+          )}
+
+          {prediction && !prediction.warning && (
+            <div className="widget animate-fade-in" style={{animationDelay: '0.2s'}}>
+              <div className="widget-title">Deep Learning Signals <span style={{fontSize: '0.6rem', background: '#089981', color: '#fff', padding: '2px 4px', borderRadius: '4px'}}>LIVE</span></div>
+              <div className="pro-widget-grid">
+                <div className="pro-mini-card">
+                  <span className="label">Social Sentiment</span>
+                  <span className="value bull">82% Bullish</span>
+                </div>
+                <div className="pro-mini-card">
+                  <span className="label">Inst. Flow</span>
+                  <span className="value bull">+4.2B INR</span>
+                </div>
+                <div className="pro-mini-card">
+                  <span className="label">Volatility (HV)</span>
+                  <span className="value">14.6%</span>
+                </div>
+                <div className="pro-mini-card">
+                  <span className="label">Delta Skew</span>
+                  <span className="value bear">-0.15</span>
+                </div>
               </div>
             </div>
           )}
@@ -672,59 +579,8 @@ function Dashboard() {
 
         </div>
       </main>
-
-      {/* Pricing Modal */}
-      {showPricing && (
-        <div className="modal-backdrop">
-          <div className="auth-card modal-card" style={{maxWidth: '800px'}}>
-            <button className="close-btn" onClick={() => setShowPricing(false)}>×</button>
-            <h2 className="auth-heading" style={{marginBottom: '40px'}}>Upgrade to TrendMaster Pro</h2>
-            
-            <div style={{display: 'flex', gap: '20px'}}>
-              <div style={{flex: 1, padding: '30px', background: 'var(--surface-bg)', border: '1px solid var(--border)', borderRadius: '12px'}}>
-                <h3 style={{color: '#8c9bad', fontSize: '1.2rem'}}>Basic</h3>
-                <div style={{fontSize: '2.5rem', color: '#fff', fontWeight: 'bold', margin: '20px 0'}}>$0<span style={{fontSize: '1rem', color: '#8c9bad'}}>/mo</span></div>
-                <ul className="feature-list" style={{marginBottom: '30px'}}>
-                  <li style={{fontSize: '0.9rem'}}>1-Day Forecast Horizon</li>
-                  <li style={{fontSize: '0.9rem'}}>Delayed Historical Data</li>
-                  <li style={{fontSize: '0.9rem'}}>Basic Charting</li>
-                </ul>
-                <button className="tv-btn-secondary-large" style={{width: '100%'}} disabled>Current Plan</button>
-              </div>
-
-              <div style={{flex: 1, padding: '30px', background: 'linear-gradient(145deg, #1e222d, #131722)', border: '2px solid #2962FF', borderRadius: '12px', position: 'relative'}}>
-                <div style={{position: 'absolute', top: '-12px', right: '20px', background: '#2962FF', color: '#fff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold'}}>MOST POPULAR</div>
-                <h3 style={{color: '#fff', fontSize: '1.2rem'}}>Pro Terminal</h3>
-                <div style={{fontSize: '2.5rem', color: '#fff', fontWeight: 'bold', margin: '20px 0'}}>$49<span style={{fontSize: '1rem', color: '#8c9bad'}}>/mo</span></div>
-                <ul className="feature-list" style={{marginBottom: '30px'}}>
-                  <li style={{fontSize: '0.9rem'}}>10-Day AI Forecast Horizon</li>
-                  <li style={{fontSize: '0.9rem'}}>Real-time WebSockets</li>
-                  <li style={{fontSize: '0.9rem'}}>AI Confidence Scores</li>
-                  <li style={{fontSize: '0.9rem'}}>No Latency Limits</li>
-                </ul>
-                <button className="tv-btn-primary-large" style={{width: '100%'}} onClick={() => {
-                  setIsPro(true);
-                  setShowPricing(false);
-                }}>Subscribe Now</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default App;
+export default ProDashboard;
