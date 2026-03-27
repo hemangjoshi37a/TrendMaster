@@ -4,6 +4,8 @@ import LandingPage from './LandingPage';
 import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
+import BacktestLab from './BacktestLab';
+import { Link } from 'react-router-dom';
 
 interface Company {
   symbol: string;
@@ -335,6 +337,11 @@ function Dashboard() {
             </svg>
             TrendMaster <span>{isPro ? 'PRO' : 'FREE TRIAL'}</span>
           </div>
+          {isPro && (
+            <Link to="/backtest" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '24px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
+               🧪 Backtest Lab
+            </Link>
+          )}
         </div>
 
         <div className="search-box">
@@ -1222,6 +1229,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/backtest" element={<BacktestLab />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
