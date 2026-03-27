@@ -16,7 +16,7 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
-      
+
       const totalScroll = document.documentElement.scrollTop;
       const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       const scroll = `${totalScroll / windowHeight}`;
@@ -37,7 +37,7 @@ const LandingPage: React.FC = () => {
   // Static demo credentials
   const DEMO_ACCOUNTS = [
     { email: 'free@trendmaster.ai', password: 'free123', isPro: false },
-    { email: 'pro@trendmaster.ai',  password: 'pro123',  isPro: true  },
+    { email: 'pro@trendmaster.ai', password: 'pro123', isPro: true },
   ];
 
   const handleAuthSubmit = (e: React.FormEvent) => {
@@ -102,10 +102,10 @@ const LandingPage: React.FC = () => {
             <span className="logo-text">TrendMaster</span>
           </div>
           <div className="tv-nav-links">
-            <span className="nav-item" onClick={() => scrollTo('features')} style={{cursor: 'pointer'}}>Features</span>
-            <span className="nav-item" onClick={() => scrollTo('how-it-works')} style={{cursor: 'pointer'}}>Pipeline</span>
-            <span className="nav-item" onClick={() => scrollTo('pricing')} style={{cursor: 'pointer'}}>Pricing</span>
-            <span className="nav-item" onClick={() => scrollTo('faq')} style={{cursor: 'pointer'}}>FAQ</span>
+            <span className="nav-item" onClick={() => scrollTo('features')} style={{ cursor: 'pointer' }}>Features</span>
+            <span className="nav-item" onClick={() => scrollTo('how-it-works')} style={{ cursor: 'pointer' }}>Pipeline</span>
+            <span className="nav-item" onClick={() => scrollTo('pricing')} style={{ cursor: 'pointer' }}>Pricing</span>
+            <span className="nav-item" onClick={() => scrollTo('faq')} style={{ cursor: 'pointer' }}>FAQ</span>
           </div>
           <div className="tv-nav-actions">
             <button className="tv-btn-login" onClick={() => openAuth('signin')}>Log In</button>
@@ -145,7 +145,7 @@ const LandingPage: React.FC = () => {
             <button className="tv-btn-secondary-large" onClick={() => scrollTo('accuracy')}>View Model Proofs</button>
           </div>
         </div>
-        
+
         {/* Mock Chart App Window */}
         <div className="tv-mock-app">
           <div className="target-glow"></div>
@@ -156,33 +156,33 @@ const LandingPage: React.FC = () => {
             <div className="mock-title">NIFTY 50 • 1D • TrendMaster TransAm Prediction Engine</div>
           </div>
           <div className="mock-chart-area">
-             <div className="mock-line-chart">
-                <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
-                  <path d="M0,250 C100,240 200,180 300,200 C400,220 500,100 600,150 C700,200 800,50 900,80 L1000,40 L1000,300 L0,300 Z" fill="url(#chart-gradient)" />
-                  <path d="M0,250 C100,240 200,180 300,200 C400,220 500,100 600,150 C700,200 800,50 900,80 L1000,40" fill="none" stroke="#2962FF" strokeWidth="4" />
-                  
-                  {/* AI Projection Line */}
-                  <path d="M700,200 C800,50 900,80 L1000,40" fill="none" stroke="#089981" strokeWidth="4" strokeDasharray="10, 10" className="animated-dash" />
-                  <circle cx="700" cy="200" r="6" fill="#089981">
-                    <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
-                  </circle>
-                  <text x="720" y="190" fill="#089981" fontSize="16" fontWeight="bold">Forecast Horizon</text>
-                  
-                  <defs>
-                    <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(41, 98, 255, 0.4)" />
-                      <stop offset="100%" stopColor="rgba(41, 98, 255, 0.0)" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-             </div>
+            <div className="mock-line-chart">
+              <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
+                <path d="M0,250 C100,240 200,180 300,200 C400,220 500,100 600,150 C700,200 800,50 900,80 L1000,40 L1000,300 L0,300 Z" fill="url(#chart-gradient)" />
+                <path d="M0,250 C100,240 200,180 300,200 C400,220 500,100 600,150 C700,200 800,50 900,80 L1000,40" fill="none" stroke="#2962FF" strokeWidth="4" />
+
+                {/* AI Projection Line */}
+                <path d="M700,200 C800,50 900,80 L1000,40" fill="none" stroke="#089981" strokeWidth="4" strokeDasharray="10, 10" className="animated-dash" />
+                <circle cx="700" cy="200" r="6" fill="#089981">
+                  <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
+                </circle>
+                <text x="720" y="190" fill="#089981" fontSize="16" fontWeight="bold">Forecast Horizon</text>
+
+                <defs>
+                  <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(41, 98, 255, 0.4)" />
+                    <stop offset="100%" stopColor="rgba(41, 98, 255, 0.0)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Massive Scrollable Sections */}
-      <main className="tv-main-content" style={{background: 'transparent', position: 'relative', zIndex: 10}}>
-        
+      <main className="tv-main-content" style={{ background: 'transparent', position: 'relative', zIndex: 10 }}>
+
         {/* Features: AI Forecasts */}
         <section id="features" className="tv-feature-block scroll-reveal">
           <div className="tv-feature-text">
@@ -195,12 +195,12 @@ const LandingPage: React.FC = () => {
             </ul>
           </div>
           <div className="tv-feature-visual mock-panel-1">
-             <div className="mock-chart-overlay"></div>
-             {/* Simple Glassmorphism overlay describing a feature */}
-             <div style={{position: 'absolute', bottom: '20px', left: '20px', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', maxWidth: '300px'}}>
-                <h4 style={{margin: '0 0 8px 0', color: '#fff'}}>Pattern Recognition</h4>
-                <p style={{margin: 0, color: '#d1d4dc', fontSize: '0.85rem'}}>Detecting hidden fractal structures invisible to human charting analysis.</p>
-             </div>
+            <div className="mock-chart-overlay"></div>
+            {/* Simple Glassmorphism overlay describing a feature */}
+            <div style={{ position: 'absolute', bottom: '20px', left: '20px', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', maxWidth: '300px' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: '#fff' }}>Pattern Recognition</h4>
+              <p style={{ margin: 0, color: '#d1d4dc', fontSize: '0.85rem' }}>Detecting hidden fractal structures invisible to human charting analysis.</p>
+            </div>
           </div>
         </section>
 
@@ -211,11 +211,11 @@ const LandingPage: React.FC = () => {
               <div className="node n1"></div>
               <div className="node n2"></div>
               <div className="node n3"></div>
-              <svg><line x1="20" y1="20" x2="100" y2="100" stroke="#fff" strokeWidth="2" opacity="0.3"/></svg>
+              <svg><line x1="20" y1="20" x2="100" y2="100" stroke="#fff" strokeWidth="2" opacity="0.3" /></svg>
             </div>
             {/* Context metric */}
-            <div style={{position: 'absolute', top: '20px', right: '20px', background: 'rgba(8,153,129,0.2)', border: '1px solid #089981', padding: '12px 20px', borderRadius: '8px', color: '#089981', fontWeight: 'bold'}}>
-               BULLISH SIGNAL: 94.2% CONFIDENCE
+            <div style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(8,153,129,0.2)', border: '1px solid #089981', padding: '12px 20px', borderRadius: '8px', color: '#089981', fontWeight: 'bold' }}>
+              BULLISH SIGNAL: 94.2% CONFIDENCE
             </div>
           </div>
           <div className="tv-feature-text">
@@ -241,32 +241,32 @@ const LandingPage: React.FC = () => {
             </ul>
           </div>
           <div className="tv-feature-visual mock-panel-3">
-             <div className="community-bubbles">
-                <div className="bubble b1" style={{borderLeftColor: '#089981'}}>"BankNifty resistance breakout verified: 85% Confidence"</div>
-                <div className="bubble b2" style={{borderRightColor: '#2962FF'}}>"RELIANCE historical fractal match detected."</div>
-                <div className="bubble b3" style={{borderLeftColor: '#f23645'}}>"Bearish divergence identified across Nifty IT sector."</div>
-             </div>
+            <div className="community-bubbles">
+              <div className="bubble b1" style={{ borderLeftColor: '#089981' }}>"BankNifty resistance breakout verified: 85% Confidence"</div>
+              <div className="bubble b2" style={{ borderRightColor: '#2962FF' }}>"RELIANCE historical fractal match detected."</div>
+              <div className="bubble b3" style={{ borderLeftColor: '#f23645' }}>"Bearish divergence identified across Nifty IT sector."</div>
+            </div>
           </div>
         </section>
 
         {/* About Us Section */}
-        <section id="about" className="tv-feature-block reverse scroll-reveal" style={{marginBottom: '120px'}}>
-          <div className="tv-feature-visual" style={{background: '#181c27', display: 'flex', flexDirection: 'column', padding: '40px', justifyContent: 'center', position: 'relative', overflow: 'hidden'}}>
-             <div style={{position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: 'radial-gradient(circle, rgba(123,31,162,0.15) 0%, transparent 60%)', animation: 'spin 20s linear infinite'}}></div>
-             <h3 style={{color: '#fff', fontSize: '2rem', marginBottom: '16px', zIndex: 1}}>Our Mission</h3>
-             <p style={{color: '#d1d4dc', fontSize: '1.1rem', lineHeight: '1.6', zIndex: 1}}>
-               "To democratize quantitative dominance. We built TrendMaster because retail traders deserve the identical computational edge that institutional funds have fiercely guarded for decades."
-             </p>
-             <div style={{marginTop: '32px', zIndex: 1, display: 'flex', gap: '20px'}}>
-                <div>
-                   <div style={{fontSize: '2rem', fontWeight: 'bold', color: '#2962FF'}}>10+</div>
-                   <div style={{fontSize: '0.85rem', color: '#8c9bad', textTransform: 'uppercase'}}>AI Researchers</div>
-                </div>
-                <div>
-                   <div style={{fontSize: '2rem', fontWeight: 'bold', color: '#089981'}}>100M+</div>
-                   <div style={{fontSize: '0.85rem', color: '#8c9bad', textTransform: 'uppercase'}}>Data Points Mapped</div>
-                </div>
-             </div>
+        <section id="about" className="tv-feature-block reverse scroll-reveal" style={{ marginBottom: '120px' }}>
+          <div className="tv-feature-visual" style={{ background: '#181c27', display: 'flex', flexDirection: 'column', padding: '40px', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: 'radial-gradient(circle, rgba(123,31,162,0.15) 0%, transparent 60%)', animation: 'spin 20s linear infinite' }}></div>
+            <h3 style={{ color: '#fff', fontSize: '2rem', marginBottom: '16px', zIndex: 1 }}>Our Mission</h3>
+            <p style={{ color: '#d1d4dc', fontSize: '1.1rem', lineHeight: '1.6', zIndex: 1 }}>
+              "To democratize quantitative dominance. We built TrendMaster because retail traders deserve the identical computational edge that institutional funds have fiercely guarded for decades."
+            </p>
+            <div style={{ marginTop: '32px', zIndex: 1, display: 'flex', gap: '20px' }}>
+              <div>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2962FF' }}>10+</div>
+                <div style={{ fontSize: '0.85rem', color: '#8c9bad', textTransform: 'uppercase' }}>AI Researchers</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#089981' }}>100M+</div>
+                <div style={{ fontSize: '0.85rem', color: '#8c9bad', textTransform: 'uppercase' }}>Data Points Mapped</div>
+              </div>
+            </div>
           </div>
           <div className="tv-feature-text">
             <h2>About Us: The Quants Behind the AI.</h2>
@@ -281,62 +281,62 @@ const LandingPage: React.FC = () => {
 
         {/* Testimonials */}
         <section id="testimonials" className="tv-testimonials-section scroll-reveal">
-           <h2>Engineered for Traders. Validated by Results.</h2>
-           <div className="testimonials-track">
-             <div className="testimonial-card">
-               <div className="t-stars">★★★★★</div>
-               <p className="t-quote">"The 10-day forward looking projection on BankNifty saved me from a massive fake-out. Absolutely unprecedented UI and latency."</p>
-               <div className="t-author">— Rohan S., Options Trader</div>
-             </div>
-             <div className="testimonial-card">
-               <div className="t-stars">★★★★★</div>
-               <p className="t-quote">"TrendMaster feels like holding a Bloomberg terminal injected with next-level deep learning. The confidence score dictates my entire sizing strategy now."</p>
-               <div className="t-author">— Anil K., Quantitative Analyst</div>
-             </div>
-             <div className="testimonial-card">
-               <div className="t-stars">★★★★★</div>
-               <p className="t-quote">"Smooth, flawless execution. It seamlessly bridges the gap between complex PyTorch inference and an incredibly intuitive visual dashboard."</p>
-               <div className="t-author">— Priya M., Retail Investor</div>
-             </div>
-           </div>
+          <h2>Engineered for Traders. Validated by Results.</h2>
+          <div className="testimonials-track">
+            <div className="testimonial-card">
+              <div className="t-stars">★★★★★</div>
+              <p className="t-quote">"The 10-day forward looking projection on BankNifty saved me from a massive fake-out. Absolutely unprecedented UI and latency."</p>
+              <div className="t-author">— Rohan S., Options Trader</div>
+            </div>
+            <div className="testimonial-card">
+              <div className="t-stars">★★★★★</div>
+              <p className="t-quote">"TrendMaster feels like holding a Bloomberg terminal injected with next-level deep learning. The confidence score dictates my entire sizing strategy now."</p>
+              <div className="t-author">— Anil K., Quantitative Analyst</div>
+            </div>
+            <div className="testimonial-card">
+              <div className="t-stars">★★★★★</div>
+              <p className="t-quote">"Smooth, flawless execution. It seamlessly bridges the gap between complex PyTorch inference and an incredibly intuitive visual dashboard."</p>
+              <div className="t-author">— Priya M., Retail Investor</div>
+            </div>
+          </div>
         </section>
 
         {/* Advanced Tooling Layout */}
         <section id="advanced-tools" className="tv-tools-section scroll-reveal">
-           <div className="tools-header">
-             <h2>A Terminal Without Compromise</h2>
-             <p>Every metric, every indicator, optimized for sheer computational speed.</p>
-           </div>
-           <div className="tv-bento-grid">
-              <div className="bento-card col-span-2">
-                 <div className="bento-content">
-                    <h3>Deep Pattern Recognition</h3>
-                    <p>Detect hidden structural shifts using multi-layer transformer modules that learn dynamically from your favorite index feeds.</p>
-                 </div>
-                 <div className="bento-bg pattern-bg-1"></div>
+          <div className="tools-header">
+            <h2>A Terminal Without Compromise</h2>
+            <p>Every metric, every indicator, optimized for sheer computational speed.</p>
+          </div>
+          <div className="tv-bento-grid">
+            <div className="bento-card col-span-2">
+              <div className="bento-content">
+                <h3>Deep Pattern Recognition</h3>
+                <p>Detect hidden structural shifts using multi-layer transformer modules that learn dynamically from your favorite index feeds.</p>
               </div>
-              <div className="bento-card">
-                 <div className="bento-content">
-                    <h3>Websocket Streaming</h3>
-                    <p>0.2ms latency to the dashboard.</p>
-                 </div>
-                 <div className="bento-bg pattern-bg-2"></div>
+              <div className="bento-bg pattern-bg-1"></div>
+            </div>
+            <div className="bento-card">
+              <div className="bento-content">
+                <h3>Websocket Streaming</h3>
+                <p>0.2ms latency to the dashboard.</p>
               </div>
-              <div className="bento-card">
-                 <div className="bento-content">
-                    <h3>Risk Parameterization</h3>
-                    <p>Proprietary standard deviation bands to map out localized drawdowns.</p>
-                 </div>
-                 <div className="bento-bg pattern-bg-3"></div>
+              <div className="bento-bg pattern-bg-2"></div>
+            </div>
+            <div className="bento-card">
+              <div className="bento-content">
+                <h3>Risk Parameterization</h3>
+                <p>Proprietary standard deviation bands to map out localized drawdowns.</p>
               </div>
-              <div className="bento-card col-span-2">
-                 <div className="bento-content">
-                    <h3>Confidence Scoring Matrix</h3>
-                    <p>Trade only when the probabilities align perfectly. Mathematical confirmation before capital allocation.</p>
-                 </div>
-                 <div className="bento-bg pattern-bg-4"></div>
+              <div className="bento-bg pattern-bg-3"></div>
+            </div>
+            <div className="bento-card col-span-2">
+              <div className="bento-content">
+                <h3>Confidence Scoring Matrix</h3>
+                <p>Trade only when the probabilities align perfectly. Mathematical confirmation before capital allocation.</p>
               </div>
-           </div>
+              <div className="bento-bg pattern-bg-4"></div>
+            </div>
+          </div>
         </section>
 
         {/* FAQ Section */}
@@ -344,28 +344,28 @@ const LandingPage: React.FC = () => {
           <div className="faq-container">
             <h2>Frequently Asked Questions</h2>
             <div className="faq-item">
-               <details>
-                  <summary>How does the AI model actually predict prices?</summary>
-                  <div className="faq-answer">We utilize a proprietary PyTorch-based Transformer architecture (TransAm) combined with internal positional embeddings. It ingests the last 30 intervals of OHLC data alongside technical indicators (RSI, EMA, MACD) to emit a 10-step forward looking probabilistic array.</div>
-               </details>
+              <details>
+                <summary>How does the AI model actually predict prices?</summary>
+                <div className="faq-answer">We utilize a proprietary PyTorch-based Transformer architecture (TransAm) combined with internal positional embeddings. It ingests the last 30 intervals of OHLC data alongside technical indicators (RSI, EMA, MACD) to emit a 10-step forward looking probabilistic array.</div>
+              </details>
             </div>
             <div className="faq-item">
-               <details>
-                  <summary>Is the market data real-time?</summary>
-                  <div className="faq-answer">Yes. We connect to NSE exchange feeds via dual-redundant WebSockets, ensuring live tick streaming directly to your client instance with less than 25ms of latency.</div>
-               </details>
+              <details>
+                <summary>Is the market data real-time?</summary>
+                <div className="faq-answer">Yes. We connect to NSE exchange feeds via dual-redundant WebSockets, ensuring live tick streaming directly to your client instance with less than 25ms of latency.</div>
+              </details>
             </div>
             <div className="faq-item">
-               <details>
-                  <summary>What markets does TrendMaster support?</summary>
-                  <div className="faq-answer">Currently, TrendMaster Pro is optimized specifically for National Stock Exchange (NSE) indices and standard equity options. Global equities and FX commodities are planned for v2.0.</div>
-               </details>
+              <details>
+                <summary>What markets does TrendMaster support?</summary>
+                <div className="faq-answer">Currently, TrendMaster Pro is optimized specifically for National Stock Exchange (NSE) indices and standard equity options. Global equities and FX commodities are planned for v2.0.</div>
+              </details>
             </div>
             <div className="faq-item">
-               <details>
-                  <summary>Do I need to know how to code to use the platform?</summary>
-                  <div className="faq-answer">Not at all. We have condensed complex neural network evaluation processes into a beautiful, point-and-click UI environment. Just search your ticker, and the mathematics happen instantly in the background.</div>
-               </details>
+              <details>
+                <summary>Do I need to know how to code to use the platform?</summary>
+                <div className="faq-answer">Not at all. We have condensed complex neural network evaluation processes into a beautiful, point-and-click UI environment. Just search your ticker, and the mathematics happen instantly in the background.</div>
+              </details>
             </div>
           </div>
         </section>
@@ -381,13 +381,13 @@ const LandingPage: React.FC = () => {
               <p className="plan-description">10-day free trial. No credit card required.</p>
               <div className="price">$0<span className="price-suffix">/10 days</span></div>
               <ul className="plan-features">
-                <li className="feature-item included">1-Day AI Forecast Horizon</li>
-                <li className="feature-item included">Delayed Historical Data Access</li>
+                <li className="feature-item included">10-Day Forecast Chart (Day 1 Unlocked)</li>
+                <li className="feature-item included">Historical Data Access</li>
                 <li className="feature-item included">Basic Charting Tools</li>
                 <li className="feature-item included">Email Support</li>
-                <li className="feature-item excluded">Real-time WebSockets</li>
+                <li className="feature-item excluded">Full 10-Day Forecast Table</li>
                 <li className="feature-item excluded">AI Confidence Scores</li>
-                <li className="feature-item excluded">No Latency Limits</li>
+                <li className="feature-item excluded">Real-time WebSockets</li>
                 <li className="feature-item excluded">Priority Support</li>
               </ul>
               <button className="tv-btn-secondary-large" onClick={() => openAuth('signup', 'basic')}>Start 10-Day Free Trial</button>
@@ -400,7 +400,7 @@ const LandingPage: React.FC = () => {
               <p className="plan-description">Full access for 30 days. Cancel anytime.</p>
               <div className="price">$49<span className="price-suffix">/30 days</span></div>
               <ul className="plan-features">
-                <li className="feature-item included">10-Day AI Forecast Horizon</li>
+                <li className="feature-item included">Full AI Forecast Horizon</li>
                 <li className="feature-item included">Real-time WebSockets (25ms latency)</li>
                 <li className="feature-item included">Advanced AI Confidence Scores</li>
                 <li className="feature-item included">No Latency Limits</li>
@@ -426,7 +426,7 @@ const LandingPage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="tv-footer" style={{position: 'relative', zIndex: 10}}>
+      <footer className="tv-footer" style={{ position: 'relative', zIndex: 10 }}>
         <div className="tv-footer-grid">
           <div className="footer-col brand-col">
             <div className="tv-nav-logo">
@@ -436,7 +436,7 @@ const LandingPage: React.FC = () => {
               </svg>
               <span className="logo-text">TrendMaster</span>
             </div>
-            <p style={{marginTop: '20px', lineHeight: '1.7', color: '#d1d4dc', fontSize: '0.95rem'}}>
+            <p style={{ marginTop: '20px', lineHeight: '1.7', color: '#d1d4dc', fontSize: '0.95rem' }}>
               Empowering global retail traders with Deep Learning and Institutional-Grade AI.
             </p>
           </div>
@@ -448,15 +448,15 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="footer-col">
             <h4>Platform</h4>
-            <span onClick={() => scrollTo('features')} style={{cursor:'pointer'}}>Features</span>
-            <span onClick={() => scrollTo('accuracy')} style={{cursor:'pointer'}}>Accuracy Metrics</span>
-            <span onClick={() => scrollTo('pricing')} style={{cursor:'pointer'}}>Pricing</span>
+            <span onClick={() => scrollTo('features')} style={{ cursor: 'pointer' }}>Features</span>
+            <span onClick={() => scrollTo('accuracy')} style={{ cursor: 'pointer' }}>Accuracy Metrics</span>
+            <span onClick={() => scrollTo('pricing')} style={{ cursor: 'pointer' }}>Pricing</span>
           </div>
           <div className="footer-col">
             <h4>Company</h4>
-            <span onClick={() => scrollTo('about')} style={{cursor:'pointer'}}>About Us</span>
-            <span onClick={() => scrollTo('faq')} style={{cursor:'pointer'}}>FAQ</span>
-            <span onClick={() => openAuth('signin')} style={{cursor:'pointer'}}>Log In</span>
+            <span onClick={() => scrollTo('about')} style={{ cursor: 'pointer' }}>About Us</span>
+            <span onClick={() => scrollTo('faq')} style={{ cursor: 'pointer' }}>FAQ</span>
+            <span onClick={() => openAuth('signin')} style={{ cursor: 'pointer' }}>Log In</span>
           </div>
         </div>
         <div className="footer-bottom">
@@ -466,60 +466,60 @@ const LandingPage: React.FC = () => {
 
       {/* Auth Modal */}
       {showAuthModal && (
-         <div className="modal-backdrop">
-           <div className="auth-card modal-card">
-             <button className="close-btn" onClick={() => setShowAuthModal(false)}>×</button>
-             
-             <div className="logo-container">
-               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="logo-icon">
+        <div className="modal-backdrop">
+          <div className="auth-card modal-card">
+            <button className="close-btn" onClick={() => setShowAuthModal(false)}>×</button>
+
+            <div className="logo-container">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="logo-icon">
                 <path d="M3 3v18h18" />
                 <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
               </svg>
-             </div>
- 
-             <h2 className="auth-heading">{authMode === 'signin' ? 'Welcome Back' : 'Create Account'}</h2>
-             {selectedPlan === 'pro' && (
-               <div style={{display:'flex', justifyContent:'center', marginBottom:'12px'}}>
-                 <span style={{background:'linear-gradient(90deg,#2962FF,#089981)', color:'#fff', padding:'4px 14px', borderRadius:'20px', fontSize:'0.8rem', fontWeight:'bold'}}>⚡ Pro Plan Selected</span>
-               </div>
-             )}
-             <p className="auth-subheading" style={{marginBottom: '24px'}}>
-               {authMode === 'signin' 
-                 ? 'Enter your details to access the AI dashboard.' 
-                 : 'Sign up to start AI-powered trading predictions.'}
-             </p>
- 
-             <form onSubmit={handleAuthSubmit} className="auth-form">
-               {authMode === 'signup' && (
-                 <div className="input-group">
-                   <label>Full Name</label>
-                   <input type="text" placeholder="John Doe" required />
-                 </div>
-               )}
-               {authError && <div style={{color: '#f23645', fontSize: '0.85rem', marginBottom: '8px', textAlign: 'center', background: 'rgba(242, 54, 69, 0.1)', padding: '8px', borderRadius: '4px'}}>{authError}</div>}
-               <div className="input-group">
-                 <label>Email Address</label>
-                 <input type="email" placeholder="trade@trendmaster.ai" value={email} onChange={e => setEmail(e.target.value)} required />
-               </div>
-               <div className="input-group">
-                 <label>Password</label>
-                 <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-               </div>
-               <button type="submit" className="primary-btn" style={selectedPlan === 'pro' ? {background:'linear-gradient(90deg,#2962FF,#1E53E5)', boxShadow:'0 4px 16px rgba(41,98,255,0.4)'} : {}}>
-                  {authMode === 'signin' ? 'Sign In' : (selectedPlan === 'pro' ? 'Subscribe & Start Pro' : 'Sign Up Free')}
-               </button>
-             </form>
-             <div className="auth-footer">
-               <p>
-                 {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
-                 <button className="toggle-btn" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}>
-                   {authMode === 'signin' ? 'Sign up' : 'Sign in'}
-                 </button>
-               </p>
-             </div>
-           </div>
-         </div>
-       )}
+            </div>
+
+            <h2 className="auth-heading">{authMode === 'signin' ? 'Welcome Back' : 'Create Account'}</h2>
+            {selectedPlan === 'pro' && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                <span style={{ background: 'linear-gradient(90deg,#2962FF,#089981)', color: '#fff', padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>⚡ Pro Plan Selected</span>
+              </div>
+            )}
+            <p className="auth-subheading" style={{ marginBottom: '24px' }}>
+              {authMode === 'signin'
+                ? 'Enter your details to access the AI dashboard.'
+                : 'Sign up to start AI-powered trading predictions.'}
+            </p>
+
+            <form onSubmit={handleAuthSubmit} className="auth-form">
+              {authMode === 'signup' && (
+                <div className="input-group">
+                  <label>Full Name</label>
+                  <input type="text" placeholder="John Doe" required />
+                </div>
+              )}
+              {authError && <div style={{ color: '#f23645', fontSize: '0.85rem', marginBottom: '8px', textAlign: 'center', background: 'rgba(242, 54, 69, 0.1)', padding: '8px', borderRadius: '4px' }}>{authError}</div>}
+              <div className="input-group">
+                <label>Email Address</label>
+                <input type="email" placeholder="trade@trendmaster.ai" value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              <div className="input-group">
+                <label>Password</label>
+                <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+              </div>
+              <button type="submit" className="primary-btn" style={selectedPlan === 'pro' ? { background: 'linear-gradient(90deg,#2962FF,#1E53E5)', boxShadow: '0 4px 16px rgba(41,98,255,0.4)' } : {}}>
+                {authMode === 'signin' ? 'Sign In' : (selectedPlan === 'pro' ? 'Subscribe & Start Pro' : 'Sign Up Free')}
+              </button>
+            </form>
+            <div className="auth-footer">
+              <p>
+                {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
+                <button className="toggle-btn" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}>
+                  {authMode === 'signin' ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
