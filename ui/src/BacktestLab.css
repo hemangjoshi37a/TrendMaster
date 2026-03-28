@@ -1,0 +1,192 @@
+.backtest-lab {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: var(--text-main);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.backtest-header {
+  margin-bottom: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.backtest-title h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #fff, #8c9bad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.backtest-title p {
+  color: var(--text-muted);
+}
+
+.backtest-controls {
+  display: flex;
+  gap: 16px;
+  background: rgba(42, 46, 57, 0.4);
+  padding: 16px 24px;
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.backtest-input {
+  background: #131722;
+  border: 1px solid #363c4e;
+  color: #d1d4dc;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.backtest-input:focus {
+  border-color: var(--accent);
+}
+
+.run-backtest-btn {
+  align-self: flex-end;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.run-backtest-btn:hover:not(:disabled) {
+  background: #1e53e5;
+  transform: translateY(-1px);
+}
+
+.run-backtest-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.backtest-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+}
+
+.chart-section {
+  background: rgba(19, 23, 34, 0.6);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 24px;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.metrics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.metric-card {
+  background: rgba(42, 46, 57, 0.3);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 10px 0;
+}
+
+.metric-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.win-rate .metric-value {
+  color: var(--success);
+}
+
+.mae-val, .rmse-val {
+  color: var(--accent);
+}
+
+.backtest-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.backtest-empty svg {
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+.bt-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.bt-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(41, 98, 255, 0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chart-container-bt {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  margin-top: 16px;
+}

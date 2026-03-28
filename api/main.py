@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import yfinance as yf
 from typing import List, Dict, Optional
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 
 # Import from our library
@@ -378,6 +379,120 @@ def market_overview():
             print(f"Error fetching {name}: {e}")
             result.append({"name": name, "price": 0, "change_pct": 0.0})
     return result
+
+@app.get("/api/backtest")
+def backtest_stock(
+    stock_symbol: str,
+    period: str = Query("2y", regex="^(1y|2y|5y|max)$"),
+    test_days: int = Query(90, ge=10, le=365),
+    step: int = Query(5, ge=1, le=20)
+):
+    symbol_upper = stock_symbol.strip().upper()
+    yf_symbol = f"{symbol_upper}.NS"
+    ticker = yf.Ticker(yf_symbol)
+    
+    try:
+        df = ticker.history(period=period)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Failed to fetch data for {symbol_upper}")
+    
+    if df.empty or len(df) < test_days + 30:
+        raise HTTPException(status_code=400, detail="Insufficient historical data for backtesting.")
+
+    # Prep indicators
+    df_for_indicators = df.rename(columns={
+        'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'
+    })
+    df_with_indicators = data_loader.add_technical_indicators(df_for_indicators)
+    
+    model = get_model(symbol_upper)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"No predictive model found for {symbol_upper} to run backtest.")
+
+    # Get input size from model
+    input_size = 1
+    try:
+        for name, param in model.named_parameters():
+            if 'input_proj.weight' in name:
+                input_size = param.shape[1]
+                break
+    except: pass
+    
+    features = ['close']
+    if input_size == 6:
+        features = ['close', 'rsi', 'ema_20', 'ema_50', 'macd', 'signal']
+
+    inferencer = Inferencer(model, device, data_loader)
+    
+    # Backtest Window: last `test_days` of available data
+    actual_series = df_with_indicators['close'].tolist()
+    actual_dates = df_with_indicators.index.strftime('%Y-%m-%d').tolist()
+    
+    bursts = []
+    
+    start_idx = len(df_with_indicators) - test_days
+    end_idx = len(df_with_indicators) - 10
+    
+    all_abs_errors = []
+    all_sq_errors = []
+    direction_hits = 0
+    total_direction_tests = 0
+
+    for i in range(start_idx, end_idx, step):
+        current_df = df_with_indicators.iloc[:i+1]
+        data_loader.preprocess_data(current_df, columns=features, train=True)
+        
+        try:
+            preds_df = inferencer.predict(
+                symbol_upper, 
+                current_df.index[0], 
+                current_df.index[-1], 
+                30, 10, 
+                columns=features, 
+                data=current_df
+            )
+            
+            p_vals = preds_df['Predicted_Close'].tolist()
+            p_dates = preds_df['Date'].dt.strftime('%Y-%m-%d').tolist()
+            
+            actual_slice = df_with_indicators['close'].iloc[i+1 : i+11].tolist()
+            if len(actual_slice) > 0:
+                for p, a in zip(p_vals, actual_slice):
+                    all_abs_errors.append(abs(p - a))
+                    all_sq_errors.append((p - a)**2)
+                
+                if len(actual_slice) >= 5 and len(p_vals) >= 5:
+                    actual_dir = actual_slice[4] > actual_series[i]
+                    pred_dir = p_vals[4] > actual_series[i]
+                    if actual_dir == pred_dir:
+                        direction_hits += 1
+                    total_direction_tests += 1
+
+                bursts.append({
+                    "start_index": i,
+                    "dates": p_dates,
+                    "prices": p_vals
+                })
+        except Exception:
+            continue
+
+    mae = np.mean(all_abs_errors) if all_abs_errors else 0
+    rmse = np.sqrt(np.mean(all_sq_errors)) if all_sq_errors else 0
+    win_rate = (direction_hits / total_direction_tests * 100) if total_direction_tests > 0 else 0
+
+    return {
+        "symbol": symbol_upper,
+        "actual": {
+            "dates": actual_dates,
+            "prices": actual_series
+        },
+        "bursts": bursts,
+        "metrics": {
+            "mae": round(float(mae), 2),
+            "rmse": round(float(rmse), 2),
+            "win_rate": round(float(win_rate), 1)
+        }
+    }
 
 @app.websocket("/ws/ticks/{symbol}")
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
