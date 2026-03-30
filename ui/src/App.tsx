@@ -5,6 +5,9 @@ import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 import BacktestLab from './BacktestLab';
+import NewsTerminal from './NewsTerminal';
+import Footer from './Footer';
+import SectorHeatmap from './SectorHeatmap';
 import { Link } from 'react-router-dom';
 
 interface Company {
@@ -337,8 +340,11 @@ function Dashboard() {
             </svg>
             TrendMaster <span>{isPro ? 'PRO' : 'FREE TRIAL'}</span>
           </div>
+          <Link to="/news" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '24px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
+             🗞️ News Terminal
+          </Link>
           {isPro && (
-            <Link to="/backtest" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '24px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
+            <Link to="/backtest" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
                🧪 Backtest Lab
             </Link>
           )}
@@ -987,30 +993,7 @@ function Dashboard() {
           )}
 
           {isPro && (
-            <div className="widget">
-              <div className="widget-title">Sector Heatmap</div>
-              <div className="heatmap-grid">
-                {[
-                  { name: 'IT', change: 1.2 },
-                  { name: 'BANK', change: -0.8 },
-                  { name: 'AUTO', change: 2.1 },
-                  { name: 'PHARMA', change: 0.5 },
-                  { name: 'FMCG', change: -0.3 },
-                  { name: 'METAL', change: 1.7 },
-                  { name: 'MEDIA', change: -1.2 },
-                  { name: 'REALTY', change: 0.9 },
-                ].map((s, i) => (
-                  <div 
-                    key={s.name} 
-                    className={`heatmap-cell ${s.change >= 0 ? 'bull' : 'bear'}`}
-                    style={{ animationDelay: `${i * 0.05}s` }}
-                  >
-                    <span className="hm-name">{s.name}</span>
-                    <span className="hm-val">{s.change >= 0 ? '+' : ''}{s.change}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SectorHeatmap isPro={isPro} />
           )}
 
           <div className="widget">
@@ -1142,86 +1125,7 @@ function Dashboard() {
   );
 }
 
-// --- Sub-components ---
-
-function Footer({ isPro, wsStatus }: { isPro: boolean, wsStatus: string }) {
-  return (
-    <footer className={`footer ${isPro ? 'pro-footer' : ''}`}>
-      <div className="footer-content">
-        <div className="footer-grid">
-          <div className="footer-section brand-section">
-            <div className="footer-logo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-              </svg>
-              TrendMaster <span>{isPro ? 'PRO' : 'FREE'}</span>
-            </div>
-            <p className="footer-desc">
-              Empowering NSE traders with next-gen Transformer AI. Real-time patterns, 10-day forecasts, and high-confidence signals.
-            </p>
-            <div className="footer-socials">
-              <span className="social-icon">𝕏</span>
-              <span className="social-icon">in</span>
-              <span className="social-icon">✉</span>
-            </div>
-          </div>
-
-          <div className="footer-section">
-            <h4>Platform</h4>
-            <ul>
-              <li><a href="#markets">Markets</a></li>
-              <li><a href="#signals">AI Signals</a></li>
-              <li><a href="#heatmap">Sector Heatmap</a></li>
-              <li><a href="#alerts">Price Alerts</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-section">
-            <h4>Resources</h4>
-            <ul>
-              <li><a href="#help">Help Center</a></li>
-              <li><a href="#api">API Documentation</a></li>
-              <li><a href="#blog">Market Insights</a></li>
-              <li><a href="#status">System Status</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-section status-section">
-            <h4>System Status</h4>
-            <div className="status-pills">
-              <div className="status-pill">
-                <span className={`dot ${wsStatus === 'connected' ? 'online' : 'reconnecting'}`}></span>
-                Live Feed: {wsStatus === 'connected' ? 'Stable' : 'Connecting...'}
-              </div>
-              <div className="status-pill">
-                <span className="dot online"></span>
-                AI Core: Operational
-              </div>
-              <div className="status-pill">
-                <span className="dot online"></span>
-                API: 12ms
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <div className="footer-legal">
-            <span>© 2026 TrendMaster AI. All rights reserved.</span>
-            <div className="legal-links">
-              <a href="#privacy">Privacy</a>
-              <a href="#terms">Terms</a>
-              <a href="#disclaimer">Disclaimer</a>
-            </div>
-          </div>
-          <div className="footer-disclaimer">
-            <b>Disclaimer:</b> Trading involves significant risk. AI predictions are based on historical patterns and are for educational purposes only. Always consult a financial advisor.
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
+// --- Routes ---
 
 function App() {
   return (
@@ -1230,6 +1134,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/backtest" element={<BacktestLab />} />
+        <Route path="/news" element={<NewsTerminal />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

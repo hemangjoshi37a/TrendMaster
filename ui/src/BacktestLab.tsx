@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import BacktestChart from './BacktestChart';
+import Footer from './Footer';
 import './BacktestLab.css';
 
 interface BacktestResults {
@@ -50,127 +51,131 @@ const BacktestLab: React.FC = () => {
   };
 
   return (
-    <div className="backtest-lab dark-theme">
-      <div className="backtest-header">
-        <div className="backtest-title">
-          <h1>AI Backtest Lab</h1>
-          <p>Evaluate Transformer accuracy by running historical "point-in-time" forecasts.</p>
-        </div>
-        
-        <div className="backtest-controls">
-          <div className="control-group">
-            <label>Symbol</label>
-            <input 
-              type="text" 
-              className="backtest-input" 
-              value={symbol} 
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            />
-          </div>
-          <div className="control-group">
-            <label>Range</label>
-            <select 
-              className="backtest-input" 
-              value={period} 
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option value="1y">1 Year</option>
-              <option value="2y">2 Years</option>
-              <option value="5y">5 Years</option>
-              <option value="max">Max</option>
-            </select>
-          </div>
-          <div className="control-group">
-            <label>Test Days</label>
-            <input 
-              type="number" 
-              className="backtest-input" 
-              style={{ width: '80px' }}
-              value={testDays} 
-              onChange={(e) => setTestDays(Math.min(365, Math.max(10, parseInt(e.target.value) || 10)))}
-            />
-          </div>
-          <button 
-            className="run-backtest-btn" 
-            onClick={runBacktest}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="bt-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></span>
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="23 4 23 10 17 10"></polyline>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-                Run Backtest
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      <div className="backtest-grid">
-        <div className="chart-section">
-          {results ? (
-            <div className="chart-container-bt">
-              <BacktestChart data={results} />
+    <div className="backtest-lab-wrapper dark-theme">
+      <div className="backtest-lab">
+        <div className="backtest-header">
+          <div className="backtest-title">
+            <h1>AI Backtest Lab</h1>
+            <p>Evaluate Transformer accuracy by running historical "point-in-time" forecasts.</p>
+            <div style={{ marginTop: '16px' }}>
+              <Link to="/dashboard" state={{ isPro }} style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>
+                ← Return to Live Terminals
+              </Link>
             </div>
-          ) : (
-            <div className="backtest-empty">
-              {loading ? (
-                <div className="bt-loader">
-                  <div className="bt-spinner"></div>
-                  <p>Running Historical Simulations...</p>
-                </div>
-              ) : error ? (
-                <div className="error-msg">
-                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f23645" strokeWidth="1.5">
-                    <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  <h3>Backtest Failed</h3>
-                  <p>{error}</p>
-                </div>
-              ) : (
-                <>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                    <path d="M3 3v18h18"></path><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.6"></path>
-                  </svg>
-                  <h3>Ready for Simulation</h3>
-                  <p>Select a symbol and date range to see how the AI would have performed in the past.</p>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="metrics-section">
-          <div className="metric-card win-rate">
-            <span className="metric-label">DIRECTIONAL ACCURACY</span>
-            <span className="metric-value">{results ? `${results.metrics.win_rate}%` : '--'}</span>
-            <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>Win rate on 5-day trend direction</p>
-          </div>
-          <div className="metric-card mae-card">
-            <span className="metric-label">MEAN ABSOLUTE ERROR</span>
-            <span className="metric-value mae-val">{results ? `₹${results.metrics.mae.toFixed(2)}` : '--'}</span>
-            <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>Average price deviation</p>
-          </div>
-           <div className="metric-card rmse-card">
-            <span className="metric-label">ROOT MEAN SQ. ERROR</span>
-            <span className="metric-value rmse-val">{results ? `₹${results.metrics.rmse.toFixed(2)}` : '--'}</span>
-            <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>Penalizes larger outliers</p>
           </div>
           
-          <div style={{ padding: '0 8px', marginTop: 'auto' }}>
-            <Link to="/dashboard" state={{ isPro }} className="back-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>
-               ← Return to Live Terminals
-            </Link>
+          <div className="backtest-controls">
+            <div className="control-group">
+              <label>Symbol</label>
+              <input 
+                type="text" 
+                className="backtest-input" 
+                value={symbol} 
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className="control-group">
+              <label>Range</label>
+              <select 
+                className="backtest-input" 
+                value={period} 
+                onChange={(e) => setPeriod(e.target.value)}
+              >
+                <option value="1y">1 Year</option>
+                <option value="2y">2 Years</option>
+                <option value="5y">5 Years</option>
+                <option value="max">Max</option>
+              </select>
+            </div>
+            <div className="control-group">
+              <label>Test Days</label>
+              <input 
+                type="number" 
+                className="backtest-input" 
+                style={{ width: '80px' }}
+                value={testDays} 
+                onChange={(e) => setTestDays(Math.min(365, Math.max(10, parseInt(e.target.value) || 10)))}
+              />
+            </div>
+            <button 
+              className="run-backtest-btn" 
+              onClick={runBacktest}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span className="bt-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></span>
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  Run Backtest
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="backtest-grid">
+          <div className="chart-section">
+            {results ? (
+              <div className="chart-container-bt">
+                <BacktestChart data={results} />
+              </div>
+            ) : (
+              <div className="backtest-empty">
+                {loading ? (
+                  <div className="bt-loader">
+                    <div className="bt-spinner"></div>
+                    <p>Running Historical Simulations...</p>
+                  </div>
+                ) : error ? (
+                  <div className="error-msg">
+                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f23645" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h3>Backtest Failed</h3>
+                    <p>{error}</p>
+                  </div>
+                ) : (
+                  <>
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                      <path d="M3 3v18h18"></path><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.6"></path>
+                    </svg>
+                    <h3>Ready for Simulation</h3>
+                    <p>Select a symbol and date range to see how the AI would have performed in the past.</p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="metrics-section">
+            <div className="metric-card win-rate">
+              <div className="metric-label">AI Hit Rate</div>
+              <div className="metric-value">{results ? `${results.metrics.win_rate}%` : '--'}</div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Historical trend accuracy</p>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-label">Mean Absolute Error</div>
+              <div className="metric-value mae-val">{results ? `₹${results.metrics.mae.toFixed(2)}` : '--'}</div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Average price deviation</p>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-label">Root Mean Sq. Error</div>
+              <div className="metric-value rmse-val">{results ? `₹${results.metrics.rmse.toFixed(2)}` : '--'}</div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Penalizes larger outliers</p>
+            </div>
           </div>
         </div>
       </div>
+      <Footer isPro={isPro} wsStatus="connected" />
     </div>
   );
 };
