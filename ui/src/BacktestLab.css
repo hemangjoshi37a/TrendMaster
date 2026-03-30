@@ -1,7 +1,17 @@
+.backtest-lab-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+}
+
 .backtest-lab {
+  flex: 1;
   padding: 24px;
+  padding-bottom: 80px;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
   color: var(--text-main);
   animation: fadeIn 0.4s ease-out;
 }

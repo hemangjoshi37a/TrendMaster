@@ -494,6 +494,110 @@ def backtest_stock(
         }
     }
 
+@app.get("/api/news")
+def get_market_news():
+    """Fetch global financial news and calculate simulated market impact."""
+    indices = ["^NSEI", "^GSPC", "^IXIC", "^FTSE"]
+    news_items = []
+    
+    # Sentiment Keywords
+    pos_words = {'rise', 'gain', 'up', 'surge', 'bullish', 'growth', 'beat', 'expansion', 'rate cut', 'easing', 'positive', 'rally', 'profit', 'hit'}
+    neg_words = {'fall', 'drop', 'down', 'plunge', 'bearish', 'inflation', 'miss', 'contraction', 'rate hike', 'tightening', 'negative', 'crash', 'loss', 'debt'}
+
+    for idx in indices:
+        try:
+            ticker = yf.Ticker(idx)
+            # yfinance news can be slow, so we take only the latest few
+            raw_news = ticker.news[:5]
+            for item in raw_news:
+                content = item.get('content', {})
+                title = content.get('title', 'Market Update')
+                summary = content.get('summary', '') or content.get('description', '')
+                url = content.get('clickThroughUrl', {}).get('url', '#')
+                provider = content.get('provider', {}).get('displayName', 'News')
+                
+                # Simple Sentiment Analysis
+                text = (title + " " + summary).lower()
+                score = 0
+                for word in pos_words:
+                    if word in text: score += 1
+                for word in neg_words:
+                    if word in text: score -= 1
+                
+                impact = "NEUTRAL"
+                if score > 0: impact = "BULLISH"
+                elif score < 0: impact = "BEARISH"
+                
+                news_items.append({
+                    "id": item.get('id'),
+                    "title": title,
+                    "source": provider,
+                    "url": url,
+                    "impact": impact,
+                    "score": score,
+                    "category": "Global" if idx != "^NSEI" else "Indian",
+                    "timestamp": pd.Timestamp.now().isoformat() # Ideally we'd parse the real date
+                })
+        except Exception as e:
+            print(f"Error fetching news for {idx}: {e}")
+            continue
+            
+    # Sort by score or just return unique items
+    unique_news = {item['id']: item for item in news_items}.values()
+    return list(unique_news)[:15]
+
+@app.get("/api/sectors")
+def get_sector_heatmap():
+    """Fetch real-time daily performance for major Nifty sectors."""
+    sector_map = {
+        '^NSEBANK': {'name': 'Nifty Bank', 'weight': 35},
+        '^CNXIT': {'name': 'Nifty IT', 'weight': 15},
+        '^CNXAUTO': {'name': 'Nifty Auto', 'weight': 6},
+        '^CNXPHARMA': {'name': 'Nifty Pharma', 'weight': 4},
+        '^CNXFMCG': {'name': 'Nifty FMCG', 'weight': 9},
+        '^CNXMETAL': {'name': 'Nifty Metal', 'weight': 4},
+        '^CNXENERGY': {'name': 'Nifty Energy', 'weight': 12},
+        '^CNXREALTY': {'name': 'Nifty Realty', 'weight': 1},
+        '^CNXMEDIA': {'name': 'Nifty Media', 'weight': 1}
+    }
+    
+    heatmap_data = []
+    for ticker, info in sector_map.items():
+        try:
+            # yfinance info dictionary often contains 'regularMarketChangePercent'
+            # Alternatively, we can download 2 days of history to compute the change
+            yticker = yf.Ticker(ticker)
+            change = yticker.info.get('regularMarketChangePercent')
+            
+            # Fallback if 'info' is empty or missing the field
+            if change is None:
+                hist = yticker.history(period="2d")
+                if len(hist) >= 2:
+                    prev_close = hist['Close'].iloc[0]
+                    curr_close = hist['Close'].iloc[1]
+                    change = ((curr_close - prev_close) / prev_close) * 100
+                else:
+                    change = 0.0
+                    
+            heatmap_data.append({
+                'name': info['name'],
+                'ticker': ticker,
+                'change': round(change, 2),
+                'weight': info['weight']
+            })
+        except Exception as e:
+            print(f"Error fetching sector {ticker}: {e}")
+            heatmap_data.append({
+                'name': info['name'],
+                'ticker': ticker,
+                'change': 0.0,
+                'weight': info['weight']
+            })
+            
+    # Sort by weight (largest blocks first)
+    heatmap_data.sort(key=lambda x: x['weight'], reverse=True)
+    return heatmap_data
+
 @app.websocket("/ws/ticks/{symbol}")
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
     await manager.connect(websocket, symbol.upper())
