@@ -159,8 +159,8 @@ app.add_middleware(
 )
 
 # --- Prediction Logic ---
-def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
-    print(f"--- Starting prediction for {symbol} (period={period}) ---")
+def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", shock_pct=0.0):
+    print(f"--- Starting prediction for {symbol} (period={period}, shock={shock_pct}%) ---")
     yf_symbol = f"{symbol}.NS"
     ticker = yf.Ticker(yf_symbol)
     
@@ -180,6 +180,15 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
     df_for_indicators = df.rename(columns={
         'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'
     })
+    
+    if shock_pct != 0.0:
+        multiplier = 1.0 + (shock_pct / 100.0)
+        # Apply shock to the last available day's price
+        df_for_indicators.iloc[-1, df_for_indicators.columns.get_loc('close')] *= multiplier
+        df_for_indicators.iloc[-1, df_for_indicators.columns.get_loc('high')] *= multiplier
+        df_for_indicators.iloc[-1, df_for_indicators.columns.get_loc('low')] *= multiplier
+        print(f"Applied shock of {shock_pct}%. New Close: {df_for_indicators['close'].iloc[-1]}")
+
     df_with_indicators = data_loader.add_technical_indicators(df_for_indicators)
     
     model = get_model(symbol)
@@ -223,7 +232,8 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
         
         print("Prediction successful")
         history_to_show = min(60, len(df))
-        close_prices = df['Close'].values[-history_to_show:]
+        # Use df_for_indicators so the shocked point shows up on the chart
+        close_prices = df_for_indicators['close'].values[-history_to_show:]
         pred_rescaled = predictions_df['Predicted_Close'].values
         full_series = np.concatenate([close_prices, pred_rescaled])
         
@@ -254,7 +264,7 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y"):
         traceback.print_exc()
         # Return at least historical data so UI doesn't hang
         history_to_show = min(90, len(df))
-        close_prices = df['Close'].values[-history_to_show:]
+        close_prices = df_for_indicators['close'].values[-history_to_show:]
         hist_dates = df.index[-history_to_show:].strftime('%Y-%m-%d').tolist()
         return {
             "dates": hist_dates,
@@ -344,6 +354,28 @@ def predict_stock(
         prediction_cache[cache_key] = {"data": result, "timestamp": time.time()}
         save_cache()
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/simulate")
+def simulate_shock(
+    stock_symbol: str,
+    period: str = Query("1y", regex="^(1mo|3mo|6mo|1y|2y|5y|max)$"),
+    shock_pct: float = Query(0.0)
+):
+    symbol_upper = stock_symbol.strip().upper()
+    if not re.match(r'^[A-Z0-9&_.-]{1,20}$', symbol_upper):
+        raise HTTPException(status_code=400, detail="Invalid stock symbol.")
+    
+    company_name = symbol_to_name.get(symbol_upper, symbol_upper)
+    
+    try:
+        data = get_real_prediction(symbol_upper, period=period, shock_pct=shock_pct)
+        return {
+            "symbol": symbol_upper,
+            "company_name": company_name,
+            **data
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
