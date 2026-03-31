@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 import BacktestLab from './BacktestLab';
 import NewsTerminal from './NewsTerminal';
+import ChaosSandbox from './ChaosSandbox';
 import Footer from './Footer';
 import SectorHeatmap from './SectorHeatmap';
 import { Link } from 'react-router-dom';
@@ -63,6 +64,7 @@ function Dashboard() {
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([]);
   const location = useLocation();
+  const navigate = useNavigate();
   const [currentSymbol, setCurrentSymbol] = useState<string>('');
   const [isPro, setIsPro] = useState<boolean>(location.state?.isPro || false);
   const [showPricing, setShowPricing] = useState<boolean>(false);
@@ -70,6 +72,11 @@ function Dashboard() {
   const [triggeredAlerts, setTriggeredAlerts] = useState<string[]>([]); // Array of alert IDs or symbols that flared
   const [showAddAlert, setShowAddAlert] = useState<boolean>(false);
   const [alertForm, setAlertForm] = useState<{target: string, type: 'above' | 'below'}>({target: '', type: 'above'});
+
+  const handleLogout = () => {
+    localStorage.removeItem('tm_account');
+    navigate('/');
+  };
 
   // --- Trial / Subscription Expiry Logic ---
   const TRIAL_DAYS = 10;
@@ -343,6 +350,9 @@ function Dashboard() {
           <Link to="/news" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '24px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
              🗞️ News Terminal
           </Link>
+          <Link to="/sandbox" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
+             🌀 Sandbox
+          </Link>
           {isPro && (
             <Link to="/backtest" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
                🧪 Backtest Lab
@@ -380,11 +390,29 @@ function Dashboard() {
           )}
         </div>
         
-        <div className="brand">
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
             <span className="status-dot"></span>
             {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
           </div>
+          <button 
+            onClick={handleLogout}
+            style={{
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border)',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            Logout
+          </button>
         </div>
       </nav>
 
@@ -1135,6 +1163,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/backtest" element={<BacktestLab />} />
         <Route path="/news" element={<NewsTerminal />} />
+        <Route path="/sandbox" element={<ChaosSandbox />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
