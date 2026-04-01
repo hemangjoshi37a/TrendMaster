@@ -9,6 +9,7 @@ import NewsTerminal from './NewsTerminal';
 import ChaosSandbox from './ChaosSandbox';
 import Footer from './Footer';
 import SectorHeatmap from './SectorHeatmap';
+import PaperTrading from './PaperTrading';
 import { Link } from 'react-router-dom';
 
 interface Company {
@@ -358,6 +359,9 @@ function Dashboard() {
                🧪 Backtest Lab
             </Link>
           )}
+          <Link to="/paper-trading" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
+             💼 Paper Trading
+          </Link>
         </div>
 
         <div className="search-box">
@@ -1164,6 +1168,7 @@ function App() {
         <Route path="/backtest" element={<BacktestLab />} />
         <Route path="/news" element={<NewsTerminal />} />
         <Route path="/sandbox" element={<ChaosSandbox />} />
+        <Route path="/paper-trading" element={<PaperTrading />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
