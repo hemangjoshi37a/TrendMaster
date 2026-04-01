@@ -630,6 +630,30 @@ def get_sector_heatmap():
     heatmap_data.sort(key=lambda x: x['weight'], reverse=True)
     return heatmap_data
 
+@app.get("/api/quote")
+def get_live_quote(symbol: str):
+    """Fetch real-time snapshot quote for a single symbol."""
+    symbol_upper = symbol.strip().upper()
+    yf_symbol = f"{symbol_upper}.NS"
+    try:
+        ticker = yf.Ticker(yf_symbol)
+        # fast_info is typically faster for an immediate quote
+        price = ticker.fast_info['last_price']
+        
+        # We can also fetch some basic info to display
+        # "name" might be available, fallback to symbol
+        name = symbol_to_name.get(symbol_upper, symbol_upper)
+        
+        return {
+            "symbol": symbol_upper,
+            "name": name,
+            "price": round(float(price), 2),
+            "timestamp": pd.Timestamp.now().isoformat()
+        }
+    except Exception as e:
+        print(f"Error fetching quote for {symbol_upper}: {e}")
+        raise HTTPException(status_code=404, detail=f"Failed to fetch quote for {symbol_upper}")
+
 @app.websocket("/ws/ticks/{symbol}")
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
     await manager.connect(websocket, symbol.upper())
