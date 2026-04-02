@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import LineChart from './LineChart';
+import TopNav from './TopNav';
 import './PaperTrading.css';
 
 interface Position {
   symbol: string;
   qty: number;
   avgPrice: number;
+  takeProfit?: number;
+  stopLoss?: number;
 }
 
 interface Transaction {
@@ -58,6 +61,8 @@ const PaperTrading: React.FC = () => {
   // Order State
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY');
   const [orderQty, setOrderQty] = useState<number | ''>('');
+  const [takeProfit, setTakeProfit] = useState<number | ''>('');
+  const [stopLoss, setStopLoss] = useState<number | ''>('');
   
   // UI State
   const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
@@ -89,7 +94,6 @@ const PaperTrading: React.FC = () => {
       if (data.price) {
         setLiveQuote(prev => {
           setPrevQuote(prev);
-          // Auto update the background dictionary too for P&L tracking
           setLivePrices(lp => ({...lp, [symbol]: data.price}));
           return data.price;
         });
@@ -111,6 +115,8 @@ const PaperTrading: React.FC = () => {
     setPrevQuote(null);
     setPrediction(null);
     setOrderQty('');
+    setTakeProfit('');
+    setStopLoss('');
 
     try {
       // Fetch 10-day AI prediction to power the chart
@@ -156,6 +162,50 @@ const PaperTrading: React.FC = () => {
     return () => clearInterval(interval);
   }, [state.positions, activeSymbol]);
 
+  // Auto-Executor Loop: Evaluate bounds whenever live prices change
+  useEffect(() => {
+    state.positions.forEach(pos => {
+      const currentPrice = (pos.symbol === activeSymbol && liveQuote) ? liveQuote : livePrices[pos.symbol];
+      if (!currentPrice) return;
+
+      let triggered = false;
+      let reason = '';
+
+      if (pos.takeProfit && currentPrice >= pos.takeProfit) {
+        triggered = true;
+        reason = `Take Profit Triggered (≥ ₹${pos.takeProfit})`;
+      } else if (pos.stopLoss && currentPrice <= pos.stopLoss) {
+        triggered = true;
+        reason = `Stop Loss Triggered (≤ ₹${pos.stopLoss})`;
+      }
+
+      if (triggered) {
+        setState(prev => {
+          // Double check if it still exists
+          const pIndex = prev.positions.findIndex(p => p.symbol === pos.symbol);
+          if (pIndex === -1) return prev;
+          
+          const p = prev.positions[pIndex];
+          const newCash = prev.cash + (p.qty * currentPrice);
+          const newPositions = [...prev.positions];
+          newPositions.splice(pIndex, 1);
+          
+          const tx: Transaction = {
+            id: Math.random().toString(36).substr(2, 9),
+            symbol: p.symbol,
+            type: 'SELL',
+            qty: p.qty,
+            price: currentPrice,
+            date: new Date().toISOString()
+          };
+
+          setTimeout(() => showToast(`${reason}: Auto-sold ${p.qty} ${p.symbol} at ₹${currentPrice.toFixed(2)}`, 'success'), 100);
+          return { cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
+        });
+      }
+    });
+  }, [liveQuote, livePrices, activeSymbol, state.positions]);
+
   const executeTrade = () => {
     const currentPrice = liveQuote || (prediction ? prediction.prices[prediction.prediction_start_index - 1] : 0);
     if (!currentPrice || !orderQty || orderQty <= 0) return;
@@ -170,9 +220,20 @@ const PaperTrading: React.FC = () => {
       const posIndex = newPositions.findIndex(p => p.symbol === activeSymbol);
       const pos = posIndex >= 0 ? newPositions[posIndex] : null;
 
+      let tpVal = takeProfit ? Number(takeProfit) : undefined;
+      let slVal = stopLoss ? Number(stopLoss) : undefined;
+
       if (orderSide === 'BUY') {
+        if (tpVal !== undefined && tpVal <= currentPrice) {
+          setTimeout(() => showToast("Take Profit must be > entry price!", 'error'), 0);
+          return prev;
+        }
+        if (slVal !== undefined && slVal >= currentPrice) {
+          setTimeout(() => showToast("Stop Loss must be < entry price!", 'error'), 0);
+          return prev;
+        }
         if (cost > newCash) {
-          showToast("Insufficient Buying Power!", 'error');
+          setTimeout(() => showToast("Insufficient Buying Power!", 'error'), 0);
           return prev;
         }
         newCash -= cost;
@@ -180,13 +241,15 @@ const PaperTrading: React.FC = () => {
           const totalCost = (pos.qty * pos.avgPrice) + cost;
           pos.qty += qty;
           pos.avgPrice = totalCost / pos.qty;
+          if (tpVal !== undefined) pos.takeProfit = tpVal;
+          if (slVal !== undefined) pos.stopLoss = slVal;
         } else {
-          newPositions.push({ symbol: activeSymbol, qty, avgPrice: currentPrice });
+          newPositions.push({ symbol: activeSymbol, qty, avgPrice: currentPrice, takeProfit: tpVal, stopLoss: slVal });
         }
-        showToast(`Market BUY ${qty} ${activeSymbol} Executed`, 'success');
+        setTimeout(() => showToast(`Market BUY ${qty} ${activeSymbol} Executed`, 'success'), 0);
       } else {
         if (!pos || pos.qty < qty) {
-          showToast("Insufficient Shares to Sell!", 'error');
+          setTimeout(() => showToast("Insufficient Shares to Sell!", 'error'), 0);
           return prev;
         }
         newCash += cost;
@@ -194,7 +257,7 @@ const PaperTrading: React.FC = () => {
         if (pos.qty === 0) {
           newPositions.splice(posIndex, 1);
         }
-        showToast(`Market SELL ${qty} ${activeSymbol} Executed`, 'success');
+        setTimeout(() => showToast(`Market SELL ${qty} ${activeSymbol} Executed`, 'success'), 0);
       }
 
       const tx: Transaction = {
@@ -206,7 +269,11 @@ const PaperTrading: React.FC = () => {
         date: new Date().toISOString()
       };
 
-      setOrderQty(''); 
+      setTimeout(() => {
+        setOrderQty('');
+        setTakeProfit('');
+        setStopLoss('');
+      }, 0);
       return { cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
     });
   };
@@ -243,18 +310,12 @@ const PaperTrading: React.FC = () => {
   return (
     <div className="pt-pro-wrapper">
       {/* Top Navbar */}
-      <nav className="pt-pro-nav">
-        <div className="pt-nav-left">
-          <Link to="/" className="pt-brand">TrendMaster</Link>
-          <div className="pt-nav-links">
-            <Link to="/dashboard">Markets</Link>
-            <Link to="/sandbox">Sandbox</Link>
-            <Link to="/paper-trading" className="active">Paper Trading</Link>
-            {isPro && <Link to="/backtest">Backtest Lab</Link>}
-          </div>
-        </div>
-        
-        <div className="pt-nav-right">
+      <TopNav 
+        activePage="paper-trading" 
+        isPro={isPro} 
+        totalEquityOverride={totalEquity}
+        totalUnrealizedOverride={totalUnrealized}
+        searchElement={
            <input 
               type="text"
               className="pt-search-input"
@@ -263,12 +324,11 @@ const PaperTrading: React.FC = () => {
               onKeyDown={e => e.key === 'Enter' && loadSymbolData(searchInput)}
               placeholder="Search ticker..."
            />
-           <div className="pt-account-chip">
-              💰 ₹{totalEquity.toLocaleString('en-IN', {maximumFractionDigits: 0})} PNL: <span style={{color: totalUnrealized >= 0 ? '#0ECB81' : '#F6465D'}}>{totalUnrealized >= 0 ? '+' : ''}₹{totalUnrealized.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
-           </div>
+        }
+        rightActions={
            <button onClick={() => navigate('/dashboard')} style={{background: 'transparent', color: '#848E9C', border:'none', cursor:'pointer', fontSize: '1rem', fontWeight: 700}}>×</button>
-        </div>
-      </nav>
+        }
+      />
 
       {/* Main Trading Workspace */}
       <div className="pt-pro-workspace">
@@ -321,10 +381,10 @@ const PaperTrading: React.FC = () => {
           <div className="pt-bottom-pane">
              <div className="pt-tabs-header">
                 <div className={`pt-tab ${activeTab === 'positions' ? 'active' : ''}`} onClick={() => setActiveTab('positions')}>
-                  Positions ({state.positions.length})
+                   Positions ({state.positions.length})
                 </div>
                 <div className={`pt-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
-                  Order History
+                   Order History
                 </div>
              </div>
              <div className="pt-tab-content">
@@ -337,6 +397,7 @@ const PaperTrading: React.FC = () => {
                          <th>Entry Price</th>
                          <th>Mark Price</th>
                          <th>Unrealized PNL</th>
+                         <th>Limits (TP/SL)</th>
                          <th>Action</th>
                        </tr>
                      </thead>
@@ -349,25 +410,37 @@ const PaperTrading: React.FC = () => {
                            <tr key={pos.symbol}>
                              <td className="pt-sym-badge" style={{cursor: 'pointer'}} onClick={() => loadSymbolData(pos.symbol)}>{pos.symbol}</td>
                              <td>{pos.qty}</td>
-                             <td>{pos.avgPrice.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
-                             <td>{currentP.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+                             <td>₹{pos.avgPrice.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+                             <td>₹{currentP.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
                              <td className={pnl >= 0 ? 'bull' : 'bear'} style={{color: pnl>=0 ? '#0ECB81' : '#F6465D'}}>
                                 {pnl >= 0 ? '+' : ''}{pnl.toLocaleString('en-IN', {maximumFractionDigits: 2})} ({pnlPct.toFixed(2)}%)
                              </td>
+                             <td style={{fontSize: '0.75rem', color: '#848E9C'}}>
+                                {pos.takeProfit ? `TP: ₹${pos.takeProfit.toLocaleString('en-IN')}` : ''}
+                                {pos.takeProfit && pos.stopLoss ? <br/> : ''}
+                                {pos.stopLoss ? `SL: ₹${pos.stopLoss.toLocaleString('en-IN')}` : ''}
+                                {!pos.takeProfit && !pos.stopLoss ? '---' : ''}
+                             </td>
                              <td>
-                               <button 
-                                 onClick={() => {
-                                     loadSymbolData(pos.symbol);
-                                     setOrderSide('SELL');
-                                     setOrderQty(pos.qty);
-                                 }}
-                                 style={{background:'transparent', border:'1px solid #2B3139', color:'#848E9C', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}
-                               >Close</button>
+                               <div style={{display: 'flex', gap: '4px', justifyContent: 'flex-end'}}>
+                                 <button 
+                                   onClick={() => {
+                                       loadSymbolData(pos.symbol);
+                                       setOrderSide('SELL');
+                                       setOrderQty(pos.qty);
+                                   }}
+                                   style={{background:'transparent', border:'1px solid #2B3139', color:'#848E9C', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}
+                                 >Close</button>
+                                 <button
+                                   onClick={() => loadSymbolData(pos.symbol)}
+                                   style={{background:'transparent', border:'1px solid #2B3139', color:'#FCD535', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}
+                                 >Trade</button>
+                               </div>
                              </td>
                            </tr>
                          );
                        }) : (
-                         <tr><td colSpan={6} style={{textAlign:'center', color:'#848E9C', padding:'24px'}}>No open positions.</td></tr>
+                         <tr><td colSpan={7} style={{textAlign:'center', color:'#848E9C', padding:'24px'}}>No open positions.</td></tr>
                        )}
                      </tbody>
                    </table>
@@ -469,6 +542,42 @@ const PaperTrading: React.FC = () => {
                  />
               </div>
 
+              {/* Advanced Order Types (TP/SL) */}
+              {orderSide === 'BUY' && (
+                 <div className="pt-advanced-orders" style={{marginTop: '8px', borderTop: '1px solid #2B3139', paddingTop: '16px'}}>
+                   <div style={{fontSize: '0.7rem', color: '#FCD535', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '0.5px'}}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                         <circle cx="12" cy="12" r="10"></circle>
+                         <line x1="12" y1="8" x2="12" y2="12"></line>
+                         <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      ADVANCED CONTROLS
+                   </div>
+                   
+                   <div className="pt-input-group" style={{marginBottom: '10px'}}>
+                      <span className="pt-input-label" style={{width: '90px'}}>Take Profit</span>
+                      <input 
+                         className="pt-input-raw" 
+                         type="number" 
+                         value={takeProfit}
+                         onChange={e => setTakeProfit(e.target.valueAsNumber || '')}
+                         placeholder="Target ₹"
+                      />
+                   </div>
+
+                   <div className="pt-input-group" style={{marginBottom: '16px'}}>
+                      <span className="pt-input-label" style={{width: '90px'}}>Stop Loss</span>
+                      <input 
+                         className="pt-input-raw" 
+                         type="number" 
+                         value={stopLoss}
+                         onChange={e => setStopLoss(e.target.valueAsNumber || '')}
+                         placeholder="Exit ₹"
+                      />
+                   </div>
+                 </div>
+              )}
+
               <div className="pt-order-summary">
                  <div className="pt-summary-row">
                     <span className="label">Total Est. Cost</span>
@@ -495,7 +604,13 @@ const PaperTrading: React.FC = () => {
       </div>
       
       {toast && (
-        <div className={`toast ${toast.type}`}>
+        <div style={{
+          position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999,
+          background: toast.type === 'success' ? '#0ECB81' : '#F6465D',
+          color: 'white', padding: '12px 24px', borderRadius: '8px',
+          fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          animation: 'fadeIn 0.3s ease'
+        }}>
           {toast.msg}
         </div>
       )}
