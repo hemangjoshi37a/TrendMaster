@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import BacktestChart from './BacktestChart';
 import Footer from './Footer';
+import TopNav from './TopNav';
 import './BacktestLab.css';
 
 interface BacktestResults {
@@ -52,16 +53,12 @@ const BacktestLab: React.FC = () => {
 
   return (
     <div className="backtest-lab-wrapper dark-theme">
+      <TopNav activePage="backtest" isPro={isPro} />
       <div className="backtest-lab">
         <div className="backtest-header">
           <div className="backtest-title">
             <h1>AI Backtest Lab</h1>
             <p>Evaluate Transformer accuracy by running historical "point-in-time" forecasts.</p>
-            <div style={{ marginTop: '16px' }}>
-              <Link to="/dashboard" state={{ isPro }} style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>
-                ← Return to Live Terminals
-              </Link>
-            </div>
           </div>
           
           <div className="backtest-controls">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Footer from './Footer';
+import TopNav from './TopNav';
 import './NewsTerminal.css';
 
 interface NewsItem {
@@ -51,16 +52,12 @@ const NewsTerminal: React.FC = () => {
 
   return (
     <div className="news-terminal-wrapper dark-theme">
+      <TopNav activePage="news" isPro={isPro} />
       <div className="news-terminal">
         <div className="news-header">
           <div className="news-title">
             <h1>Global News terminal</h1>
             <p>Real-time AI-powered market sentiment and macro analysis.</p>
-            <div style={{ marginTop: '16px' }}>
-              <Link to="/dashboard" state={{ isPro }} style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>
-                ← Return to live Terminal
-              </Link>
-            </div>
           </div>
 
           {!loading && !error && news.length > 0 && (

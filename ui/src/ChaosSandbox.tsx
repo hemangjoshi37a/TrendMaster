@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import ChaosChart from './ChaosChart';
 import Footer from './Footer';
+import TopNav from './TopNav';
 import './ChaosSandbox.css';
 
 interface PredictionData {
@@ -96,6 +97,7 @@ const ChaosSandbox: React.FC = () => {
 
   return (
     <div className="chaos-lab-wrapper dark-theme">
+      <TopNav activePage="sandbox" isPro={isPro} />
       <div className="backtest-lab"> {/* Reusing some structural classes from backtest */}
         <div className="backtest-header chaos-header">
           <div className="backtest-title">
@@ -103,11 +105,6 @@ const ChaosSandbox: React.FC = () => {
               <span style={{ fontSize: '2rem' }}>🌀</span> Chaos Sandbox
             </h1>
             <p>Inject macroeconomic shocks and watch the AI instantly re-calibrate its 10-day forecast.</p>
-            <div style={{ marginTop: '16px' }}>
-              <Link to="/dashboard" state={{ isPro }} style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>
-                ← Return to Live Terminals
-              </Link>
-            </div>
           </div>
           
           <div className="backtest-controls chaos-controls">

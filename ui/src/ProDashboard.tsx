@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
+import TopNav from './TopNav';
 import './App.css';
 
 interface Company {
@@ -241,53 +242,49 @@ function ProDashboard() {
   return (
     <div className="App dark-theme">
       {/* Top Navigation */}
-      <nav className="navbar">
-        <div className="brand">
-          <div className="logo" onClick={() => window.location.href='/'} style={{cursor: 'pointer'}}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-            TrendMaster <span style={{marginLeft: '8px', background: 'rgba(41,98,255,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#2962FF'}}>PRO</span>
-          </div>
-        </div>
-
-        <div className="search-box">
-          <div className="search-input-wrapper">
-            <div className="search-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
+      <TopNav 
+        activePage="markets" 
+        isPro={true} 
+        searchElement={
+          <div className="search-box">
+            <div className="search-input-wrapper">
+              <div className="search-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+                placeholder="Search markets, symbols (e.g. RELIANCE, TCS)..."
+                autoComplete="off"
+              />
             </div>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
-              placeholder="Search markets, symbols (e.g. RELIANCE, TCS)..."
-              autoComplete="off"
-            />
+            {showSuggestions && (
+              <ul className="suggestions">
+                {suggestions.map((c) => (
+                  <li key={c.symbol} onClick={() => handleSelectCompany(c)}>
+                    <span className="sym">{c.symbol}</span>
+                    <span className="nam">{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {showSuggestions && (
-            <ul className="suggestions">
-              {suggestions.map((c) => (
-                <li key={c.symbol} onClick={() => handleSelectCompany(c)}>
-                  <span className="sym">{c.symbol}</span>
-                  <span className="nam">{c.name}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        
-        <div className="brand">
-          <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
-            <span className="status-dot"></span>
-            {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
+        }
+        rightActions={
+          <div className="brand" style={{marginLeft: '16px'}}>
+            <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
+              <span className="status-dot"></span>
+              {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
+            </div>
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       {/* Main Dashboard Layout */}
       <main className="dashboard" onClick={() => setShowSuggestions(false)}>

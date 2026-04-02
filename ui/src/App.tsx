@@ -10,6 +10,8 @@ import ChaosSandbox from './ChaosSandbox';
 import Footer from './Footer';
 import SectorHeatmap from './SectorHeatmap';
 import PaperTrading from './PaperTrading';
+import Portfolio from './Portfolio';
+import TopNav from './TopNav';
 import { Link } from 'react-router-dom';
 
 interface Company {
@@ -340,85 +342,67 @@ function Dashboard() {
   return (
     <div className="App dark-theme">
       {/* Top Navigation */}
-      <nav className="navbar">
-        <div className="brand">
-          <div className="logo">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-            TrendMaster <span>{isPro ? 'PRO' : 'FREE TRIAL'}</span>
-          </div>
-          <Link to="/news" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '24px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
-             🗞️ News Terminal
-          </Link>
-          <Link to="/sandbox" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
-             🌀 Sandbox
-          </Link>
-          {isPro && (
-            <Link to="/backtest" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
-               🧪 Backtest Lab
-            </Link>
-          )}
-          <Link to="/paper-trading" state={{ isPro }} className="nav-extra-link" style={{ marginLeft: '12px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(41, 98, 255, 0.3)', padding: '4px 12px', borderRadius: '6px' }}>
-             💼 Paper Trading
-          </Link>
-        </div>
-
-        <div className="search-box">
-          <div className="search-input-wrapper">
-            <div className="search-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
+      <TopNav 
+        activePage="markets" 
+        isPro={isPro} 
+        searchElement={
+          <div className="search-box">
+            <div className="search-input-wrapper">
+              <div className="search-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+                placeholder="Search markets, symbols (e.g. RELIANCE, TCS)..."
+                autoComplete="off"
+              />
             </div>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
-              placeholder="Search markets, symbols (e.g. RELIANCE, TCS)..."
-              autoComplete="off"
-            />
+            {showSuggestions && (
+              <ul className="suggestions">
+                {suggestions.map((c) => (
+                  <li key={c.symbol} onClick={() => handleSelectCompany(c)}>
+                    <span className="sym">{c.symbol}</span>
+                    <span className="nam">{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {showSuggestions && (
-            <ul className="suggestions">
-              {suggestions.map((c) => (
-                <li key={c.symbol} onClick={() => handleSelectCompany(c)}>
-                  <span className="sym">{c.symbol}</span>
-                  <span className="nam">{c.name}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        
-        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
-            <span className="status-dot"></span>
-            {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
+        }
+        rightActions={
+          <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '16px' }}>
+            <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
+              <span className="status-dot"></span>
+              {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
+            </div>
+            <button 
+              onClick={handleLogout}
+              style={{
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border)',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
+              onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+            >
+              Logout
+            </button>
           </div>
-          <button 
-            onClick={handleLogout}
-            style={{
-              background: 'transparent',
-              color: 'var(--text-muted)',
-              border: '1px solid var(--border)',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
-            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+        }
+      />
 
       {/* Trial / Expiry Banner */}
       {!isExpired && (
@@ -1169,6 +1153,7 @@ function App() {
         <Route path="/news" element={<NewsTerminal />} />
         <Route path="/sandbox" element={<ChaosSandbox />} />
         <Route path="/paper-trading" element={<PaperTrading />} />
+        <Route path="/portfolio" element={<Portfolio />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
