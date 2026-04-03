@@ -12,6 +12,7 @@
   letter-spacing: -0.5px;
   background: linear-gradient(135deg, #2962FF, #1E53E5);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 12px 0;
   display: flex;
@@ -111,6 +112,54 @@
     padding: 20px;
     border: 1px dashed var(--border);
     border-radius: var(--radius-md);
+    margin-bottom: 24px;
+}
+
+.scenario-presets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.preset-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.preset-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+}
+
+.preset-btn .preset-label {
+    opacity: 0.6;
+    font-size: 0.65rem;
+    font-weight: 400;
+}
+
+.preset-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    box-shadow: 0 0 10px var(--accent-soft);
+}
+
+.shock-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
 }
 
 .slider-group label {
@@ -141,6 +190,7 @@
     width: 100%;
     margin: 16px 0;
     -webkit-appearance: none;
+    appearance: none;
     height: 6px;
     border-radius: 3px;
     outline: none;
@@ -166,6 +216,21 @@
     background: var(--error);
     cursor: pointer;
     box-shadow: 0 0 10px rgba(242, 54, 69, 0.8);
+}
+
+.chaos-slider-vix {
+    background: linear-gradient(90deg, var(--success), var(--warning), var(--error));
+}
+
+.chaos-slider-vix::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FFD700;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
 }
 
 .slider-labels {

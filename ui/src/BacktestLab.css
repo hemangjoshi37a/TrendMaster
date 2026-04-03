@@ -154,6 +154,53 @@
   color: var(--accent);
 }
 
+.comparison-card {
+  align-items: stretch;
+  text-align: left;
+}
+
+.comparison-grid {
+  display: flex;
+  justify-content: space-between;
+  margin: 16px 0;
+  gap: 12px;
+}
+
+.comp-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comp-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.comp-val {
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.comp-val.bull { color: var(--success); }
+
+.alpha-badge {
+  background: rgba(8, 153, 129, 0.15);
+  color: var(--success);
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+  border: 1px solid rgba(8, 153, 129, 0.3);
+  text-transform: uppercase;
+}
+
 .backtest-empty {
   flex: 1;
   display: flex;

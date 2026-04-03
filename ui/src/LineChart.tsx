@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, PriceLineOptions } from 'lightweight-charts';
 
 interface PredictionData {
   dates: string[];
@@ -7,24 +7,30 @@ interface PredictionData {
   prediction_start_index: number;
 }
 
+interface TradeLine {
+  price: number;
+  type: 'entry' | 'tp' | 'sl';
+  label: string;
+}
+
 interface LineChartProps {
   data: PredictionData;
   isPro?: boolean;
+  tradeLines?: TradeLine[];
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, isPro = false, tradeLines = [] }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const histSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const predSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const priceLinesRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    console.log("Initializing chart...");
     const container = chartContainerRef.current;
     
-    // Create chart
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -33,11 +39,11 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
         fontFamily: 'Inter, -apple-system, system-ui, sans-serif',
       },
       grid: {
-        vertLines: { color: 'rgba(42, 46, 57, 0.4)' },
-        horzLines: { color: 'rgba(42, 46, 57, 0.4)' },
+        vertLines: { color: 'rgba(42, 46, 57, 0.2)' },
+        horzLines: { color: 'rgba(42, 46, 57, 0.2)' },
       },
       crosshair: {
-        mode: 1, // Magnet
+        mode: 1,
         vertLine: {
           color: '#787B86',
           width: 1,
@@ -65,7 +71,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
 
     const areaSeries = chart.addAreaSeries({
       lineColor: '#2962FF',
-      topColor: 'rgba(41, 98, 255, 0.3)',
+      topColor: 'rgba(41, 98, 255, 0.2)',
       bottomColor: 'rgba(41, 98, 255, 0.0)',
       lineWidth: 2,
     });
@@ -73,7 +79,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
     const lineSeries = chart.addLineSeries({
       color: '#F23645',
       lineWidth: 2,
-      lineStyle: 2, // Dashed
+      lineStyle: 1, // Solid for prediction
       crosshairMarkerVisible: true,
     });
 
@@ -89,7 +95,6 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
     });
     resizeObserver.observe(container);
 
-    // Initial data load if available
     if (data && data.dates && data.dates.length > 0) {
         updateChartData(data);
     }
@@ -106,20 +111,16 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
     try {
         const { dates, prices, prediction_start_index: psi } = predictionData;
 
-        // Historical series: all data up to and including the last known price
         const histData = dates
           .slice(0, psi)
           .map((date, i) => ({ time: date, value: prices[i] }));
 
-        // Prediction series: starts from the last historical point (as anchor)
-        // so the two series connect seamlessly with no visual gap.
         const anchorPoint = { time: dates[psi - 1], value: prices[psi - 1] };
         
         let forecastPoints = dates
           .slice(psi)
           .map((date, i) => ({ time: date, value: prices[psi + i] }));
           
-        // Limit to 1 day forecast for free users
         if (!isPro) {
           forecastPoints = forecastPoints.slice(0, 1);
         }
@@ -142,6 +143,29 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false }) => {
       updateChartData(data);
     }
   }, [data, isPro]);
+
+  // Update Trade Lines
+  useEffect(() => {
+    if (!histSeriesRef.current) return;
+
+    // Remove old lines
+    priceLinesRef.current.forEach(line => histSeriesRef.current?.removePriceLine(line));
+    priceLinesRef.current = [];
+
+    // Add new lines
+    tradeLines.forEach(tl => {
+      const color = tl.type === 'tp' ? '#08BB81' : tl.type === 'sl' ? '#F23645' : '#787B86';
+      const pl = histSeriesRef.current?.createPriceLine({
+        price: tl.price,
+        color: color,
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        axisLabelVisible: true,
+        title: tl.label,
+      });
+      if (pl) priceLinesRef.current.push(pl);
+    });
+  }, [tradeLines]);
 
   return (
     <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />

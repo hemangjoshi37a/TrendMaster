@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import LineChart from './LineChart';
+import EquityCurve from './EquityCurve';
 import TopNav from './TopNav';
 import './PaperTrading.css';
 
@@ -25,6 +26,7 @@ interface PaperTradingState {
   cash: number;
   positions: Position[];
   history: Transaction[];
+  equityHistory: { time: string; value: number }[];
 }
 
 interface PredictionData {
@@ -45,9 +47,9 @@ const PaperTrading: React.FC = () => {
   const isPro = location.state?.isPro || false;
 
   const [state, setState] = useState<PaperTradingState>(() => {
-    const saved = localStorage.getItem('tm_paper_trading');
+    const saved = localStorage.getItem('tm_paper_trading_v2');
     if (saved) return JSON.parse(saved);
-    return { cash: DEFAULT_CASH, positions: [], history: [] };
+    return { cash: DEFAULT_CASH, positions: [], history: [], equityHistory: [] };
   });
 
   const [livePrices, setLivePrices] = useState<{ [symbol: string]: number }>({});
@@ -73,7 +75,7 @@ const PaperTrading: React.FC = () => {
   const [prevQuote, setPrevQuote] = useState<number | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('tm_paper_trading', JSON.stringify(state));
+    localStorage.setItem('tm_paper_trading_v2', JSON.stringify(state));
   }, [state]);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
@@ -135,11 +137,13 @@ const PaperTrading: React.FC = () => {
   }, [connectWebSocket]);
 
   // Initial load
+  const initialSearch = location.state?.searchSymbol || 'RELIANCE';
+
   useEffect(() => {
-    loadSymbolData('RELIANCE');
+    loadSymbolData(initialSearch);
     return () => { if (ws.current) ws.current.close(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialSearch]);
 
   // Background polling for all OTHER positions
   useEffect(() => {
@@ -161,6 +165,27 @@ const PaperTrading: React.FC = () => {
     const interval = setInterval(updatePrices, 15000);
     return () => clearInterval(interval);
   }, [state.positions, activeSymbol]);
+
+  // Equity History Tracking
+  useEffect(() => {
+    const updateEquity = () => {
+       setState(prev => {
+         let currentTotal = prev.cash;
+         prev.positions.forEach(pos => {
+           const p = (pos.symbol === activeSymbol && liveQuote) ? liveQuote : (livePrices[pos.symbol] || pos.avgPrice);
+           currentTotal += p * pos.qty;
+         });
+
+         const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+         // Keep last 50 points
+         const newHistory = [...prev.equityHistory, { time: nowStr, value: currentTotal }].slice(-50);
+         return { ...prev, equityHistory: newHistory };
+       });
+    };
+
+    const interval = setInterval(updateEquity, 60000); // 1 min refresh
+    return () => clearInterval(interval);
+  }, [liveQuote, livePrices, activeSymbol]);
 
   // Auto-Executor Loop: Evaluate bounds whenever live prices change
   useEffect(() => {
@@ -200,7 +225,7 @@ const PaperTrading: React.FC = () => {
           };
 
           setTimeout(() => showToast(`${reason}: Auto-sold ${p.qty} ${p.symbol} at ₹${currentPrice.toFixed(2)}`, 'success'), 100);
-          return { cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
+          return { ...prev, cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
         });
       }
     });
@@ -269,12 +294,10 @@ const PaperTrading: React.FC = () => {
         date: new Date().toISOString()
       };
 
-      setTimeout(() => {
-        setOrderQty('');
-        setTakeProfit('');
-        setStopLoss('');
-      }, 0);
-      return { cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
+      setOrderQty('');
+      setTakeProfit('');
+      setStopLoss('');
+      return { ...prev, cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
     });
   };
 
@@ -306,6 +329,14 @@ const PaperTrading: React.FC = () => {
 
   const activePos = state.positions.find(p => p.symbol === activeSymbol);
   const maxBuyShares = activePrice > 0 ? Math.floor(state.cash / activePrice) : 0;
+
+  // Trade Lines
+  const tradeLines = [];
+  if (activePos) {
+    tradeLines.push({ price: activePos.avgPrice, type: 'entry' as const, label: 'ENTRY' });
+    if (activePos.takeProfit) tradeLines.push({ price: activePos.takeProfit, type: 'tp' as const, label: 'TP' });
+    if (activePos.stopLoss) tradeLines.push({ price: activePos.stopLoss, type: 'sl' as const, label: 'SL' });
+  }
 
   return (
     <div className="pt-pro-wrapper">
@@ -372,7 +403,7 @@ const PaperTrading: React.FC = () => {
                      </div>
                  )}
                  {!loadingPred && prediction && (
-                     <LineChart data={prediction} isPro={isPro} />
+                     <LineChart data={prediction} isPro={isPro} tradeLines={tradeLines} />
                  )}
              </div>
           </div>
@@ -596,6 +627,16 @@ const PaperTrading: React.FC = () => {
                  >
                     {orderSide} {activeSymbol}
                  </button>
+              </div>
+
+              <div className="pt-equity-widget">
+                <div className="pt-equity-label">
+                  <span>Account Performance</span>
+                  <span style={{color: '#FCD535'}}>7D Snapshot</span>
+                </div>
+                <div className="pt-equity-chart">
+                  <EquityCurve data={state.equityHistory} />
+                </div>
               </div>
 
            </div>
