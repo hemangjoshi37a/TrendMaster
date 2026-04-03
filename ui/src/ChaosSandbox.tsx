@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import ChaosChart from './ChaosChart';
 import Footer from './Footer';
@@ -14,9 +14,26 @@ interface PredictionData {
   confidence_score?: number;
 }
 
+interface Scenario {
+  name: string;
+  label: string;
+  price: number;
+  vix: number;
+}
+
+const SCENARIOS: Scenario[] = [
+  { name: 'Baseline', label: 'Normal Market', price: 0, vix: 15 },
+  { name: 'Flash Crash', label: 'Panic Selling', price: -15, vix: 45 },
+  { name: 'Short Squeeze', label: 'Vertical Melt', price: 20, vix: 35 },
+  { name: 'Bull Trap', label: 'Fading Rally', price: 5, vix: 25 },
+  { name: 'Black Swan', label: 'Tail Risk', price: -25, vix: 65 },
+];
+
 const ChaosSandbox: React.FC = () => {
   const [symbol, setSymbol] = useState('RELIANCE');
-  const [shockPct, setShockPct] = useState(0); // Slider value
+  const [shockPct, setShockPct] = useState(0); 
+  const [vixShock, setVixShock] = useState(15); 
+  const [activeScenario, setActiveScenario] = useState('Baseline');
   const [loadingBase, setLoadingBase] = useState(false);
   const [loadingShock, setLoadingShock] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,11 +56,10 @@ const ChaosSandbox: React.FC = () => {
       }
       const data = await resp.json();
       setBaseData(data);
-      // Wait to fetch shock data until base is done if neutral shock, just copy
-      if (shockPct === 0) {
+      if (shockPct === 0 && vixShock === 15) {
         setShockData(data);
       } else {
-        fetchShockPrediction(sym, shockPct);
+        fetchShockPrediction(sym, shockPct, vixShock);
       }
     } catch (e: any) {
       setError(e.message);
@@ -52,10 +68,10 @@ const ChaosSandbox: React.FC = () => {
     }
   };
 
-  const fetchShockPrediction = async (sym: string, pct: number) => {
+  const fetchShockPrediction = useCallback(async (sym: string, pct: number, vix: number) => {
     setLoadingShock(true);
     try {
-      const resp = await fetch(`/api/simulate?stock_symbol=${sym}&period=1y&shock_pct=${pct}&no_cache=true`);
+      const resp = await fetch(`/api/simulate?stock_symbol=${sym}&period=1y&shock_pct=${pct}&vix=${vix}&no_cache=true`);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         if (!error) setError(err.detail || "Shock prediction failed");
@@ -68,22 +84,40 @@ const ChaosSandbox: React.FC = () => {
     } finally {
       setLoadingShock(false);
     }
+  }, [error]);
+
+  const debouncedUpdate = useCallback((pct: number, vix: number) => {
+    if (typingTimeout) clearTimeout(typingTimeout);
+    setTypingTimeout(setTimeout(() => {
+      if (pct === 0 && vix === 15 && baseData) {
+        setShockData(baseData);
+      } else {
+        fetchShockPrediction(symbol, pct, vix);
+      }
+    }, 450));
+  }, [baseData, fetchShockPrediction, symbol, typingTimeout]);
+
+  const handleScenarioSelect = (scenario: Scenario) => {
+    setActiveScenario(scenario.name);
+    setShockPct(scenario.price);
+    setVixShock(scenario.vix);
+    if (baseData) {
+       fetchShockPrediction(symbol, scenario.price, scenario.vix);
+    }
   };
 
-  // Debounced shock updates
-  const handleShockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleManualPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
     setShockPct(val);
+    setActiveScenario('Custom');
+    debouncedUpdate(val, vixShock);
+  };
 
-    if (typingTimeout) clearTimeout(typingTimeout);
-
-    setTypingTimeout(setTimeout(() => {
-      if (val === 0 && baseData) {
-         setShockData(baseData);
-      } else {
-         fetchShockPrediction(symbol, val);
-      }
-    }, 400));
+  const handleManualVixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVixShock(val);
+    setActiveScenario('Custom');
+    debouncedUpdate(shockPct, val);
   };
 
   const handleRunSimulation = () => {
@@ -144,7 +178,7 @@ const ChaosSandbox: React.FC = () => {
                  <div className="chaos-chart-legend">
                     <span className="legend-item"><span className="dot" style={{background: '#787B86'}}></span> Baseline AI Forecast</span>
                     <span className="legend-item"><span className="dot" style={{background: shockPct >= 0 ? '#089981' : '#F23645'}}></span> Shocked Response Forecast</span>
-                    {(loadingBase || loadingShock) && <span className="chaos-inferring">Inferring...</span>}
+                    {(loadingBase || loadingShock) && <span className="chaos-inferring">Inferring Chaos...</span>}
                  </div>
                  <ChaosChart baseData={baseData} shockData={shockData} shockPct={shockPct} />
               </div>
@@ -178,33 +212,56 @@ const ChaosSandbox: React.FC = () => {
 
           <div className="chaos-sidebar">
              <div className="chaos-widget">
-                <div className="widget-title">Market Anomaly Injector</div>
-                <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5}}>
-                    Force the AI to react to sudden price movement combinations by artificially moving the most recent closing price.
-                </p>
+                <div className="widget-title">Scenario Presets</div>
+                <div className="scenario-presets">
+                  {SCENARIOS.map(s => (
+                    <button 
+                      key={s.name} 
+                      className={`preset-btn ${activeScenario === s.name ? 'active' : ''}`}
+                      onClick={() => handleScenarioSelect(s)}
+                      disabled={!baseData}
+                    >
+                      <span>{s.name}</span>
+                      <span className="preset-label">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
 
+                <div className="widget-title" style={{marginTop: '10px'}}>Manual Anomalies</div>
                 <div className="slider-group">
-                   <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
-                       <label>Instant Price Shock</label>
+                   <div className="shock-label-row">
+                       <label>Price Shock</label>
                        <span className={`shock-badge ${shockPct > 0 ? 'bull' : shockPct < 0 ? 'bear' : ''}`}>
                           {shockPct > 0 ? '+' : ''}{shockPct}%
                        </span>
                    </div>
                    <input
                       type="range"
-                      min="-30"
-                      max="30"
-                      step="0.5"
-                      disabled={!baseData || (!isPro && shockPct !== 0 && loadingShock)}
+                      min="-40"
+                      max="40"
+                      step="1"
+                      disabled={!baseData}
                       value={shockPct}
-                      onChange={handleShockChange}
+                      onChange={handleManualPriceChange}
                       className={`chaos-slider ${shockPct >= 0 ? 'chaos-slider-bull' : 'chaos-slider-bear'}`}
                    />
-                   <div className="slider-labels">
-                      <span>Crash (-30%)</span>
-                      <span>0%</span>
-                      <span>Euphoria (+30%)</span>
+
+                   <div className="shock-label-row" style={{marginTop: '20px'}}>
+                       <label>Volatility (VIX)</label>
+                       <span className="shock-badge" style={{color: vixShock > 40 ? 'var(--error)' : vixShock > 25 ? 'var(--warning)' : 'var(--success)'}}>
+                          {vixShock}
+                       </span>
                    </div>
+                   <input
+                      type="range"
+                      min="10"
+                      max="80"
+                      step="1"
+                      disabled={!baseData}
+                      value={vixShock}
+                      onChange={handleManualVixChange}
+                      className="chaos-slider chaos-slider-vix"
+                   />
                 </div>
 
                 {!isPro && (
@@ -219,13 +276,24 @@ const ChaosSandbox: React.FC = () => {
              <div className="chaos-widget analysis-widget">
                  <div className="widget-title">AI Reaction</div>
                  {baseData && shockData ? (
-                     <p className="chaos-narrative">
-                         {shockPct === 0 ? "The model is currently projecting its standard 10-day baseline based on unmanipulated recent indicators." :
-                          shockPct < -5 ? `A heavy ${shockPct}% crash forces indicators like RSI to plunge into oversold territory. The Transformer model interprets this panic as ${shockData.prices[shockData.prices.length-1] > shockData.prices[shockData.prediction_start_index-1] ? 'a massive buying opportunity leading to a sharp V-shaped recovery.' : 'a confirmation of long-term structural breakdown, projecting continued bearishness.'}` :
-                          shockPct > 5 ? `In response to the sudden ${shockPct}% euphoria, momentum indicators redline. The AI anticipates ${shockData.prices[shockData.prices.length-1] > shockData.prices[shockData.prediction_start_index-1] ? 'the breakout has sustained legs and projects further vertical movement.' : 'a classic bull trap and projects heavy sideways correction over the next 10 days.'}` :
-                          `A mild ${shockPct}% oscillation causes the AI to adjust micro-momentum, slightly shifting the trajectory without altering the long-term trend.`
-                         }
-                     </p>
+                     <div className="chaos-narrative">
+                         <p style={{marginBottom: '10px'}}>
+                           {shockPct === 0 && vixShock === 15 ? 
+                              "The model is projecting its standard 10-day baseline. Volatility is within historical norms." :
+                              vixShock > 50 ? 
+                              `Extreme fear identified (VIX: ${vixShock}). The Transformer's attention mechanism is heavily weighted towards recent price volatility, leading to a highly erratic forecast.` :
+                              `A ${shockPct}% shock with VIX at ${vixShock} forces the AI to recalibrate.`
+                           }
+                         </p>
+                         <p>
+                           {shockPct < -10 ? 
+                            "The model interprets this plunge as structural weakness. Unless a V-shaped recovery is immediate, further decay is anticipated." :
+                            shockPct > 10 ?
+                            "The AI flags a potential short-squeeze scenario. Recent volume clusters suggest strong institutional buying at these 'shock' levels." :
+                            "Scenario results indicate a return to mean after initial volatility oscillation."
+                           }
+                         </p>
+                     </div>
                  ) : (
                      <p style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>No anomalies injected yet.</p>
                  )}

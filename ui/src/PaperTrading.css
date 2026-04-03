@@ -245,6 +245,29 @@
   flex-direction: column;
 }
 
+.pt-equity-widget {
+  margin-top: auto;
+  border-top: 1px solid #2B3139;
+  padding: 16px;
+  background: rgba(252, 213, 53, 0.03);
+}
+
+.pt-equity-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #848E9C;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pt-equity-chart {
+  height: 80px;
+  width: 100%;
+}
+
 .pt-input-group {
   display: flex;
   background: #2B3139;
