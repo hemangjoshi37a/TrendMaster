@@ -6,7 +6,7 @@ interface Position { symbol: string; qty: number; avgPrice: number; takeProfit?:
 interface PaperTradingState { cash: number; positions: Position[]; history: any[]; }
 
 interface TopNavProps {
-  activePage: 'markets' | 'sandbox' | 'paper-trading' | 'backtest' | 'news' | 'portfolio';
+  activePage: 'markets' | 'sandbox' | 'paper-trading' | 'backtest' | 'news' | 'portfolio' | 'multiverse';
   isPro: boolean;
   searchElement?: React.ReactNode;
   hidePnl?: boolean;
@@ -73,6 +73,7 @@ const TopNav: React.FC<TopNavProps> = ({
           <Link to="/dashboard" className={activePage === 'markets' ? 'active' : ''} state={{ isPro }}>Markets</Link>
           <Link to="/news" className={activePage === 'news' ? 'active' : ''} state={{ isPro }}>News</Link>
           <Link to="/sandbox" className={activePage === 'sandbox' ? 'active' : ''} state={{ isPro }}>Sandbox</Link>
+          <Link to="/multiverse" className={activePage === 'multiverse' ? 'active' : ''} state={{ isPro }}>Multiverse</Link>
           <Link to="/paper-trading" className={activePage === 'paper-trading' ? 'active' : ''} state={{ isPro }}>Paper Trading</Link>
           <Link to="/portfolio" className={activePage === 'portfolio' ? 'active' : ''} state={{ isPro }}>Portfolio</Link>
           {isPro && <Link to="/backtest" className={activePage === 'backtest' ? 'active' : ''} state={{ isPro }}>Backtest Lab</Link>}
