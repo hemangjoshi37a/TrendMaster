@@ -572,6 +572,77 @@ class Inferencer:
 
             return predictions_df
 
+    def stochastic_backtest(self, symbol, start_date, end_date, window=30, horizon=10, num_samples=64, columns=None):
+        """
+        Runs MC Dropout simulations across a historical window to analyze 
+        how the model's uncertainty evolved over time.
+        """
+        stock_data = self.data_loader.load_or_download_data(symbol, start_date, end_date)
+        if len(stock_data) < window + horizon:
+            return None
+            
+        results = []
+        # Sample at intervals to avoid excessive computation
+        step = max(1, len(stock_data) // 20) 
+        
+        for i in range(window, len(stock_data) - horizon, step):
+            current_slice = stock_data.iloc[:i]
+            # Use the existing predict logic but on the historical slice
+            mean_df, upper_df, lower_df = self.predict(
+                symbol, start_date, current_slice.index[-1].strftime('%Y-%m-%d'),
+                window, horizon, columns=columns, data=current_slice, num_samples=num_samples
+            )
+            
+            # Record the "Moment of Truth": What actually happened?
+            actual_future = stock_data['Close'].iloc[i:i+horizon].values
+            
+            results.append({
+                "date": current_slice.index[-1].strftime('%Y-%m-%d'),
+                "expected": mean_df['Predicted_Close'].tolist(),
+                "upper": upper_df['Predicted_Close'].tolist(),
+                "lower": lower_df['Predicted_Close'].tolist(),
+                "actual": actual_future.tolist()
+            })
+            
+        return results
+
+    def calculate_risk_metrics(self, samples, current_price, target_price=None):
+        """
+        Calculate professional risk metrics from a sample distribution.
+        """
+        # Final day prices
+        final_prices = samples[:, -1]
+        returns = (final_prices - current_price) / current_price
+        
+        # Value at Risk (95% confidence)
+        var_95 = np.percentile(returns, 5)
+        
+        # Expected Shortfall (Conditional VaR)
+        es_95 = returns[returns <= var_95].mean() if any(returns <= var_95) else var_95
+        
+        # Kelly Criterion (Simplified: (p*b - q) / b)
+        # b = odds (win_avg / loss_avg), p = prob_win
+        wins = returns[returns > 0]
+        losses = returns[returns <= 0]
+        
+        p = len(wins) / len(returns)
+        avg_win = wins.mean() if len(wins) > 0 else 0.01
+        avg_loss = abs(losses.mean()) if len(losses) > 0 else 0.01
+        b = avg_win / avg_loss
+        
+        kelly = (p * b - (1 - p)) / b if b > 0 else 0
+        
+        # Probability of Profit (above target or current)
+        threshold = target_price if target_price else current_price
+        pop = (final_prices > threshold).sum() / len(final_prices)
+        
+        return {
+            "var_95": round(float(var_95 * 100), 2),
+            "es_95": round(float(es_95 * 100), 2),
+            "kelly_fraction": round(float(np.clip(kelly, 0, 1)), 3),
+            "pop": round(float(pop * 100), 2)
+        }
+
     def evaluate(self, test_data, batch_size):
         self.model.eval()
         total_mse_loss = 0

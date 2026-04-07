@@ -477,21 +477,22 @@ def get_multiverse_prediction(
             return_all_samples=True
         )
         
-        # Calculate distribution for the final day (last step of the 10-day forecast)
-        final_day_samples = all_samples[:, -1]
-        hist, bin_edges = np.histogram(final_day_samples, bins=10)
-        distribution = {
-            "bins": [float(b) for b in bin_edges],
-            "counts": [int(c) for c in hist],
-            "chaos_score": round(float(np.std(final_day_samples) / np.mean(final_day_samples) * 100), 2)
-        }
+        # Enhanced Risk Analysis
+        current_price = float(close_prices[-1])
+        risk_stats = inferencer.calculate_risk_metrics(all_samples, current_price)
         
-        history_to_show = min(60, len(df))
-        close_prices = df_for_indicators['close'].values[-history_to_show:]
-        hist_dates = df.index[-history_to_show:].strftime('%Y-%m-%d').tolist()
-        
-        future_dates = mean_df['Date'].dt.strftime('%Y-%m-%d').tolist()
-        
+        # Scenario Matrix (T+1, T+3, T+5, T+10)
+        matrix = []
+        for step in [0, 2, 4, 9]: # 0-indexed steps for 1st, 3rd, 5th, 10th day
+            if step < len(mean_df):
+                matrix.append({
+                    "day": step + 1,
+                    "date": mean_df['Date'].iloc[step].strftime('%Y-%m-%d'),
+                    "mean": float(mean_df['Predicted_Close'].iloc[step]),
+                    "upper": float(upper_df['Predicted_Close'].iloc[step]),
+                    "lower": float(lower_df['Predicted_Close'].iloc[step])
+                })
+
         return {
             "symbol": symbol_upper,
             "dates": hist_dates + future_dates,
@@ -500,11 +501,40 @@ def get_multiverse_prediction(
             "cloud_lower": [float(p) for p in lower_df['Predicted_Close'].tolist()],
             "prediction_start_index": len(close_prices),
             "distribution": distribution,
+            "risk_stats": risk_stats,
+            "matrix": matrix,
             "is_stochastic": True
         }
     except Exception as e:
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/multiverse/deep-scan")
+def historical_stochastic_scan(
+    stock_symbol: str, 
+    period: str = Query("1y")
+):
+    """
+    Run a heavy historical Monte Carlo scan across the past year.
+    """
+    symbol_upper = stock_symbol.strip().upper()
+    try:
+        ticker = yf.Ticker(f"{symbol_upper}.NS")
+        df = ticker.history(period=period)
+        if df.empty: raise Exception("No data")
+        
+        # Prepare inferencer
+        model = get_model(symbol_upper)
+        if not model: raise Exception("No model found")
+        
+        df_clean = df.rename(columns={'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'})
+        data_loader.preprocess_data(df_clean, train=True)
+        inferencer = Inferencer(model, device, data_loader)
+        
+        results = inferencer.stochastic_backtest(symbol_upper, df.index[0].strftime('%Y-%m-%d'), df.index[-1].strftime('%Y-%m-%d'))
+        return {"symbol": symbol_upper, "scan_results": results}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/market-overview")

@@ -1154,8 +1154,9 @@ function App() {
         <Route path="/backtest" element={<BacktestLab />} />
         <Route path="/pro" element={<ProDashboard />} />
         <Route path="/multiverse" element={<MultiversePage />} />
-        <Route path="/chaos" element={<ChaosSandbox />} />
+        <Route path="/sandbox" element={<ChaosSandbox />} />
         <Route path="/paper-trading" element={<PaperTrading />} />
+        <Route path="/news" element={<NewsTerminal />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
