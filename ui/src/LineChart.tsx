@@ -154,12 +154,26 @@ const LineChart: React.FC<LineChartProps> = ({ data, isPro = false, tradeLines =
 
     // Add new lines
     tradeLines.forEach(tl => {
-      const color = tl.type === 'tp' ? '#08BB81' : tl.type === 'sl' ? '#F23645' : '#787B86';
+      let color = '#787B86';
+      let style: any = 2; // Dashed
+      let lineWidth: any = 1;
+
+      if (tl.type === 'tp') {
+        color = '#08BB81';
+        lineWidth = 2;
+      } else if (tl.type === 'sl') {
+        color = '#F23645';
+        lineWidth = 2;
+      } else if (tl.type === 'entry') {
+        color = '#2962FF';
+        style = 0; // Solid
+      }
+
       const pl = histSeriesRef.current?.createPriceLine({
         price: tl.price,
         color: color,
-        lineWidth: 1,
-        lineStyle: 2, // Dashed
+        lineWidth: lineWidth,
+        lineStyle: style,
         axisLabelVisible: true,
         title: tl.label,
       });

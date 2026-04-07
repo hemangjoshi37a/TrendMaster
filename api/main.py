@@ -16,7 +16,10 @@ from contextlib import asynccontextmanager
 
 # Import from our library
 from trendmaster.trendmaster import TransAm, PositionalEncoding, Inferencer, DataLoader
+from api.simulator import HeadlineSimulator
 
+# --- Global State ---
+simulator = HeadlineSimulator()
 # --- Path Configuration ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # We'll use the 'models' directory created by the TrendMaster class
@@ -377,6 +380,131 @@ def simulate_shock(
             **data
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/simulate-headline")
+async def simulate_headline(
+    request: dict
+):
+    """
+    Simulate the impact of a custom headline on existing prediction data.
+    """
+    prediction = request.get("prediction")
+    headline = request.get("headline")
+    
+    if not prediction or not headline:
+        raise HTTPException(status_code=400, detail="Missing prediction data or headline.")
+    
+    try:
+        prices = prediction.get("prices", [])
+        psi = prediction.get("prediction_start_index", 0)
+        
+        # Calculate shift
+        shift_pct = simulator.simulate_shift(headline)
+        
+        # Apply to forecast
+        new_prices = simulator.apply_to_forecast(prices, shift_pct, psi)
+        
+        return {
+            "symbol": prediction.get("symbol"),
+            "company_name": prediction.get("company_name"),
+            "dates": prediction.get("dates"),
+            "prices": new_prices,
+            "prediction_start_index": psi,
+            "confidence_score": prediction.get("confidence_score"),
+            "simulation_label": f"Shift: {shift_pct:+.2f}%",
+            "headline": headline
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Simulation error: {str(e)}")
+
+@app.get("/api/multiverse")
+def get_multiverse_prediction(
+    stock_symbol: str,
+    period: str = Query("1y", regex="^(1mo|3mo|6mo|1y|2y|5y|max)$")
+):
+    symbol_upper = stock_symbol.strip().upper()
+    yf_symbol = f"{symbol_upper}.NS"
+    ticker = yf.Ticker(yf_symbol)
+    
+    try:
+        df = ticker.history(period=period)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Failed to fetch data for {symbol_upper}")
+    
+    if df.empty or len(df) < 5:
+        raise HTTPException(status_code=404, detail=f"No data found for {symbol_upper}")
+
+    df_for_indicators = df.rename(columns={
+        'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'
+    })
+    df_with_indicators = data_loader.add_technical_indicators(df_for_indicators)
+    model = get_model(symbol_upper)
+    
+    if not model:
+        # Fallback for no model
+        close_prices = df['Close'].values[-60:]
+        hist_dates = df.index[-60:].strftime('%Y-%m-%d').tolist()
+        return {
+            "symbol": symbol_upper,
+            "dates": hist_dates,
+            "prices": [float(p) for p in close_prices],
+            "prediction_start_index": len(close_prices),
+            "warning": "No predictive model found for multiverse simulation."
+        }
+
+    try:
+        # Fit scaler
+        input_size = 1
+        try:
+            for name, param in model.named_parameters():
+                if 'input_proj.weight' in name:
+                    input_size = param.shape[1]
+                    break
+        except: pass
+        
+        features = ['close']
+        if input_size == 6:
+            features = ['close', 'rsi', 'ema_20', 'ema_50', 'macd', 'signal']
+            
+        data_loader.preprocess_data(df_with_indicators, columns=features, train=True)
+        inferencer = Inferencer(model, device, data_loader)
+        
+        # Stochastic Prediction (Multiverse)
+        mean_df, upper_df, lower_df, all_samples = inferencer.predict(
+            symbol_upper, df.index[0], df.index[-1], 30, 10, 
+            columns=features, data=df_with_indicators, num_samples=128,
+            return_all_samples=True
+        )
+        
+        # Calculate distribution for the final day (last step of the 10-day forecast)
+        final_day_samples = all_samples[:, -1]
+        hist, bin_edges = np.histogram(final_day_samples, bins=10)
+        distribution = {
+            "bins": [float(b) for b in bin_edges],
+            "counts": [int(c) for c in hist],
+            "chaos_score": round(float(np.std(final_day_samples) / np.mean(final_day_samples) * 100), 2)
+        }
+        
+        history_to_show = min(60, len(df))
+        close_prices = df_for_indicators['close'].values[-history_to_show:]
+        hist_dates = df.index[-history_to_show:].strftime('%Y-%m-%d').tolist()
+        
+        future_dates = mean_df['Date'].dt.strftime('%Y-%m-%d').tolist()
+        
+        return {
+            "symbol": symbol_upper,
+            "dates": hist_dates + future_dates,
+            "prices": [float(p) for p in close_prices] + [float(p) for p in mean_df['Predicted_Close']],
+            "cloud_upper": [float(p) for p in upper_df['Predicted_Close'].tolist()],
+            "cloud_lower": [float(p) for p in lower_df['Predicted_Close'].tolist()],
+            "prediction_start_index": len(close_prices),
+            "distribution": distribution,
+            "is_stochastic": True
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/market-overview")

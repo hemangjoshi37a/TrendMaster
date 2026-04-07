@@ -57,6 +57,10 @@ function ProDashboard() {
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([]);
   const [currentSymbol, setCurrentSymbol] = useState<string>('');
+  const [headline, setHeadline] = useState<string>('');
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [originalPrediction, setOriginalPrediction] = useState<PredictionData | null>(null);
+  const [tradeLines, setTradeLines] = useState<any[]>([]);
 
   const ws = useRef<WebSocket | null>(null);
   const isSelecting = useRef<boolean>(false);
@@ -192,6 +196,8 @@ function ProDashboard() {
       }
       const data: PredictionData = await response.json();
       setPrediction(data);
+      setOriginalPrediction(data);
+      updateRiskZones(data);
       connectWebSocket(symbol);
 
       setRecentStocks(prev => {
@@ -238,6 +244,61 @@ function ProDashboard() {
 
   const priceChange = livePrice && prevPrice ? livePrice - prevPrice : 0;
   const priceChangePct = prevPrice ? (priceChange / prevPrice) * 100 : 0;
+
+  const updateRiskZones = (data: PredictionData) => {
+    if (!data || data.prices.length === 0) return;
+    
+    const psi = data.prediction_start_index;
+    const currentPrice = data.prices[psi - 1];
+    const targetPrice = data.prices[psi + 9] || data.prices[data.prices.length - 1];
+    const confidence = data.confidence_score || 50;
+    
+    // Calculate intelligent Stop Loss based on confidence and volatility
+    // Lower confidence = wider stop to avoid noise
+    const volatilityFactor = Math.abs(targetPrice - currentPrice) / currentPrice;
+    const slPercent = Math.max(0.02, volatilityFactor * (1.5 - (confidence / 100)));
+    
+    const isBullish = targetPrice > currentPrice;
+    const stopPrice = isBullish 
+      ? currentPrice * (1 - slPercent) 
+      : currentPrice * (1 + slPercent);
+
+    const lines = [
+      { price: currentPrice, type: 'entry', label: 'OPTIMAL ENTRY' },
+      { price: targetPrice, type: 'tp', label: 'AI TARGET' },
+      { price: stopPrice, type: 'sl', label: 'SAFETY STOP' }
+    ];
+    setTradeLines(lines);
+  };
+
+  const handleSimulateHeadline = async () => {
+    if (!headline.trim() || !originalPrediction) return;
+    setIsSimulating(true);
+    try {
+      const res = await fetch('/api/simulate-headline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prediction: originalPrediction, headline })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPrediction(data);
+        updateRiskZones(data);
+      }
+    } catch (e) {
+      console.error("Simulation failed", e);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  const handleResetSimulation = () => {
+    if (originalPrediction) {
+      setPrediction(originalPrediction);
+      setHeadline('');
+      updateRiskZones(originalPrediction);
+    }
+  };
 
   return (
     <div className="App dark-theme">
@@ -364,7 +425,7 @@ function ProDashboard() {
                   )}
 
                   <div className="chart-container-wrapper animate-fade-in">
-                    <LineChart data={prediction} />
+                    <LineChart data={prediction} isPro={true} tradeLines={tradeLines} />
                   </div>
                 </>
               ) : (
@@ -514,6 +575,75 @@ function ProDashboard() {
                     transition: 'width 0.6s ease'
                   }}></div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {prediction && (
+            <div className="widget animate-fade-in">
+              <div className="widget-title">Headline Simulator <span style={{fontSize: '0.6rem', background: 'var(--accent)', color: '#fff', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px'}}>BETA</span></div>
+              <div className="news-simulator-box">
+                <textarea 
+                  className="sim-input"
+                  placeholder="Enter hypothetical headline (e.g. 'Company announces 50% profit surge')"
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(0,0,0,0.2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px',
+                    color: 'var(--text-bright)',
+                    fontSize: '0.8rem',
+                    resize: 'none',
+                    minHeight: '60px',
+                    marginBottom: '10px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={handleSimulateHeadline}
+                    disabled={isSimulating || !headline.trim()}
+                    className="sim-btn pulse-on-hover"
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      background: 'var(--accent)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    {isSimulating ? 'Processing...' : 'Simulate Impact'}
+                  </button>
+                  {(prediction as any).headline && (
+                    <button 
+                      onClick={handleResetSimulation}
+                      className="sim-reset-btn"
+                      style={{
+                        padding: '8px 12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                {prediction && (prediction as any).simulation_label && (
+                    <div style={{ marginTop: '10px', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 500 }}>
+                        {(prediction as any).simulation_label} applied based on sentiment.
+                    </div>
+                )}
               </div>
             </div>
           )}

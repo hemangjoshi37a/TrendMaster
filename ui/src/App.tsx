@@ -5,6 +5,8 @@ import './App.css';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 import BacktestLab from './BacktestLab';
+import ProDashboard from './ProDashboard';
+import MultiversePage from './MultiversePage';
 import NewsTerminal from './NewsTerminal';
 import ChaosSandbox from './ChaosSandbox';
 import Footer from './Footer';
@@ -1150,8 +1152,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/backtest" element={<BacktestLab />} />
-        <Route path="/news" element={<NewsTerminal />} />
-        <Route path="/sandbox" element={<ChaosSandbox />} />
+        <Route path="/pro" element={<ProDashboard />} />
+        <Route path="/multiverse" element={<MultiversePage />} />
+        <Route path="/chaos" element={<ChaosSandbox />} />
         <Route path="/paper-trading" element={<PaperTrading />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="*" element={<Navigate to="/" replace />} />

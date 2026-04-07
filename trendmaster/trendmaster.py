@@ -482,75 +482,95 @@ class Inferencer:
         self.device = device
         self.data_loader = data_loader
 
-    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None, return_confidence=False):
-        """Make predictions for a stock.
-        
-        Args:
-            symbol: Stock symbol name.
-            from_date: Start date for historical data.
-            to_date: End date for historical data.
-            input_window: Number of time steps to use as input.
-            future_steps: Number of future steps to predict.
-            columns: List of feature column names for multi-feature mode.
-            data: Pre-fetched DataFrame to use instead of downloading.
-            return_confidence: If True, returns (predictions_df, confidence_score).
-        
-        Returns:
-            DataFrame with 'Date' and 'Predicted_Close' columns, or (DF, float) if return_confidence is True.
+    def predict(self, symbol, from_date, to_date, input_window, future_steps, columns=None, data=None, num_samples=1, return_confidence=False, return_all_samples=False):
+        """
+        Perform future price prediction. 
+        If num_samples > 1, performs stochastic sampling (Multiverse Mode).
         """
         if data is not None:
             stock_data = data
         else:
             stock_data = self.data_loader.load_or_download_data(symbol, from_date, to_date)
-
-        
+            
         is_multi = columns is not None and len(columns) > 1
         
         if is_multi:
             processed_data = self.data_loader.preprocess_data(stock_data, columns=columns, train=False)
-            real_seq = processed_data[-input_window:]  # shape: (input_window, num_features)
-            # Pad with zeros for future steps
+            real_seq = processed_data[-input_window:]
             zero_pad = np.zeros((future_steps, len(columns)))
             input_seq = np.vstack([real_seq, zero_pad])
-            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)  # (1, seq_len, F)
+            input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).to(self.device)
         else:
             processed_data = self.data_loader.preprocess_data(stock_data, train=False)
             real_seq = processed_data[-input_window:]
-            # Pad with zeros for future steps
             zero_pad = np.zeros(future_steps)
             input_seq = np.concatenate([real_seq, zero_pad])
             input_tensor = torch.FloatTensor(input_seq).unsqueeze(0).unsqueeze(-1).to(self.device)
 
-        
-        self.model.eval()
-        with torch.no_grad():
-            output = self.model(input_tensor)
-            # The model outputs the entire sequence. The future predictions are the last `future_steps` elements.
-            predictions = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
-        
         # Use the close scaler for inverse transform
         close_scaler = self.data_loader.scalers.get('close', getattr(self.data_loader, 'scaler', None))
         if close_scaler is None:
              raise ValueError("Scaler not found. Ensure train=True was called or Data loader initialized properly.")
-        predictions_rescaled = close_scaler.inverse_transform(predictions)
-        
-        last_date = pd.to_datetime(stock_data.index[-1])
-        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
-        predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions_rescaled.flatten()})
-        
-        if return_confidence:
-            # Compute a real confidence score based on prediction smoothness.
-            # We measure the coefficient of variation (std/mean) of the predicted daily returns.
-            pred_flat = predictions_rescaled.flatten()
-            if len(pred_flat) > 1:
-                daily_returns = np.diff(pred_flat) / (np.abs(pred_flat[:-1]) + 1e-9)
-                cv = np.std(daily_returns) / (np.mean(np.abs(daily_returns)) + 1e-9)
-                confidence_score = float(np.clip(100 * (1 / (1 + cv)), 0, 100))
-            else:
-                confidence_score = 50.0
-            return predictions_df, round(confidence_score, 1)
 
-        return predictions_df
+        if num_samples > 1:
+            # --- Multiverse Mode (Stochastic) ---
+            # Set dropout layers to training mode to enable sampling
+            self.model.eval() # Base eval
+            for m in self.model.modules():
+                if isinstance(m, nn.Dropout) or isinstance(m, nn.TransformerEncoderLayer):
+                    m.train() # Force dropout active
+            
+            all_preds = []
+            with torch.no_grad():
+                for _ in range(num_samples):
+                    output = self.model(input_tensor)
+                    preds = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
+                    rescaled = close_scaler.inverse_transform(preds).flatten()
+                    all_preds.append(rescaled)
+            
+            all_preds = np.array(all_preds) # Shape: (num_samples, future_steps)
+            mean_pred = np.mean(all_preds, axis=0)
+            # Calculate 95% Confidence Interval (2 std devs)
+            std_pred = np.std(all_preds, axis=0)
+            upper_pred = mean_pred + (2 * std_pred)
+            lower_pred = mean_pred - (2 * std_pred)
+            
+            self.model.eval() # Reset to full eval
+            
+            last_date = pd.to_datetime(stock_data.index[-1])
+            future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
+            
+            mean_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': mean_pred})
+            upper_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': upper_pred})
+            lower_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': lower_pred})
+            
+            if return_all_samples:
+                return mean_df, upper_df, lower_df, all_preds
+            return mean_df, upper_df, lower_df
+
+        else:
+            # --- Standard Deterministic Mode ---
+            self.model.eval()
+            with torch.no_grad():
+                output = self.model(input_tensor)
+                predictions = output[0, -future_steps:, 0].cpu().numpy().reshape(-1, 1)
+                
+            predictions_rescaled = close_scaler.inverse_transform(predictions)
+            last_date = pd.to_datetime(stock_data.index[-1])
+            future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
+            predictions_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': predictions_rescaled.flatten()})
+            
+            if return_confidence:
+                pred_flat = predictions_rescaled.flatten()
+                if len(pred_flat) > 1:
+                    daily_returns = np.diff(pred_flat) / (np.abs(pred_flat[:-1]) + 1e-9)
+                    cv = np.std(daily_returns) / (np.mean(np.abs(daily_returns)) + 1e-9)
+                    confidence_score = float(np.clip(100 * (1 / (1 + cv)), 0, 100))
+                else:
+                    confidence_score = 50.0
+                return predictions_df, round(confidence_score, 1)
+
+            return predictions_df
 
     def evaluate(self, test_data, batch_size):
         self.model.eval()
