@@ -14,6 +14,7 @@ import SectorHeatmap from './SectorHeatmap';
 import PaperTrading from './PaperTrading';
 import Portfolio from './Portfolio';
 import TopNav from './TopNav';
+import WealthArchitect from './WealthArchitect';
 import { Link } from 'react-router-dom';
 
 interface Company {
@@ -1151,6 +1152,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/wealth-architect" element={<WealthArchitect />} />
         <Route path="/backtest" element={<BacktestLab />} />
         <Route path="/pro" element={<ProDashboard />} />
         <Route path="/multiverse" element={<MultiversePage />} />
