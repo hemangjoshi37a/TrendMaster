@@ -107,15 +107,15 @@ const MultiversePage: React.FC = () => {
       <TopNav activePage="multiverse" isPro={true} />
       
       <main className="dashboard">
-        <div className="main-column" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="main-column" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
           {/* Hero / Header Section */}
           <section className="chart-panel pro-glow-outer">
             <div className="chart-header">
               <div className="stock-info">
-                <div className="stock-symbol" style={{ letterSpacing: '2px' }}>
-                  <span className="quantum-icon" style={{ color: 'var(--accent)', marginRight: '8px' }}>⚛</span>
+                <div className="stock-symbol" style={{ letterSpacing: '2px', fontFamily: 'Outfit' }}>
+                  <span className="quantum-icon" style={{ color: 'var(--brand-primary)', marginRight: '8px' }}>⚛</span>
                   {data?.symbol || (query || "Quantum Hub")}
-                  <span className="ws-status live" style={{ marginLeft: '12px', fontSize: '0.65rem', border: '1px solid var(--accent)', padding: '2px 8px', borderRadius: '4px' }}>
+                  <span className="ws-status live" style={{ marginLeft: '12px', fontSize: '0.65rem', border: '1px solid var(--brand-primary)', padding: '2px 8px', borderRadius: '4px' }}>
                     <span className="pulse-dot"></span> PROBABILITY ENGINE ACTIVE
                   </span>
                 </div>
@@ -123,7 +123,7 @@ const MultiversePage: React.FC = () => {
               </div>
 
               <div className="search-box">
-                <form onSubmit={handleSearch} className="search-input-wrapper" style={{ boxShadow: '0 0 20px rgba(0, 240, 255, 0.1)' }}>
+                <form onSubmit={handleSearch} className="search-input-wrapper" style={{ boxShadow: 'var(--shadow-lg)' }}>
                   <div className="search-icon">🔍</div>
                   <input 
                     type="text" 
@@ -142,22 +142,24 @@ const MultiversePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="chart-container-wrapper" style={{ flex: 1, position: 'relative', minHeight: '520px' }}>
+            <div className="chart-container-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '680px', position: 'relative', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-lg)', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
               <ErrorBoundary>
                 {data ? (
-                  <MultiverseChart data={data} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <MultiverseChart data={data} />
+                  </div>
                 ) : (
                   <div className="empty-state-quantum">
                     {loading ? (
                        <div className="loader-quantum">
                           <div className="spinner-beams"></div>
-                          <p style={{ marginTop: '20px', letterSpacing: '4px', fontSize: '0.8rem' }}>SAMPLING PARALLEL FUTURES</p>
+                          <p style={{ marginTop: '20px', letterSpacing: '4px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>SAMPLING PARALLEL FUTURES</p>
                        </div>
                     ) : (
                        <div className="discovery-dashboard" style={{ padding: '60px', width: '100%', textAlign: 'center' }}>
                           <div className="discovery-hero">
                              <div className="quantum-logo-large">⚛</div>
-                             <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '15px', background: 'linear-gradient(to bottom, #fff, #777)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Quantum Risk Hub</h2>
+                             <h2 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '15px', background: 'linear-gradient(to bottom, var(--text-bright), var(--text-muted))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'Outfit' }}>Quantum Risk Hub</h2>
                              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '700px', margin: '0 auto 50px', lineHeight: '1.8' }}>
                                 Unlock professional-grade stochastic modeling. Beyond simple predictions, we quantify the unknown using Monte Carlo Dropout sampling across 128 parallel market realities.
                              </p>
@@ -191,15 +193,15 @@ const MultiversePage: React.FC = () => {
                 symbol={data.symbol} 
               />
               
-              <div className="backtest-trigger-panel" style={{ marginTop: '30px', textAlign: 'center' }}>
+              <div className="backtest-trigger-panel" style={{ marginTop: 'var(--spacing-lg)', textAlign: 'center' }}>
                  {!scanResults ? (
-                    <button 
-                      onClick={runDeepScan} 
-                      disabled={isScanning}
-                      className="deep-scan-trigger"
-                    >
+                   <button 
+                     onClick={runDeepScan} 
+                     disabled={isScanning}
+                     className="deep-scan-trigger"
+                   >
                        {isScanning ? 'CONDUCTING HISTORICAL SCAN...' : '⚡ CONDUCT HISTORICAL STOCHASTIC SCAN'}
-                    </button>
+                   </button>
                  ) : (
                     <DeepScan results={scanResults} symbol={data.symbol} />
                  )}
@@ -221,7 +223,7 @@ const MultiversePage: React.FC = () => {
                    <div className="chaos-header">
                       <span className="chaos-label">Regime Entropy</span>
                       <span className="chaos-value" style={{ 
-                         color: data.distribution.chaos_score > 5 ? '#F23645' : data.distribution.chaos_score > 2 ? '#FF9800' : '#08BB81' 
+                         color: data.distribution.chaos_score > 5 ? 'var(--error)' : data.distribution.chaos_score > 2 ? 'var(--warning)' : 'var(--success)' 
                       }}>
                          {data.distribution.chaos_score.toFixed(2)}
                       </span>
@@ -229,7 +231,7 @@ const MultiversePage: React.FC = () => {
                    <div className="chaos-bar-bg">
                       <div className="chaos-bar-fill" style={{ 
                          width: `${Math.min(data.distribution.chaos_score * 10, 100)}%`, 
-                         background: data.distribution.chaos_score > 5 ? '#F23645' : data.distribution.chaos_score > 2 ? '#FF9800' : '#08BB81' 
+                         background: data.distribution.chaos_score > 5 ? 'var(--error)' : data.distribution.chaos_score > 2 ? 'var(--warning)' : 'var(--success)' 
                       }}></div>
                    </div>
                    <p className="chaos-desc">
@@ -251,13 +253,13 @@ const MultiversePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="widget-quantum animate-fade-in">
+          <div className="widget-quantum animate-fade-in" style={{ flex: 1 }}>
              <div className="widget-title-quantum">Scenario Legend</div>
              <div className="legend-list-quantum">
-                <div className="leg-item"><div className="dot" style={{background: '#00F0FF'}}></div><span>Most Likely</span></div>
-                <div className="leg-item"><div className="dot" style={{background: '#08BB81'}}></div><span>Optimistic Bound</span></div>
-                <div className="leg-item"><div className="dot" style={{background: '#F23645'}}></div><span>Pessimistic Bound</span></div>
-                <div className="leg-item"><div className="cloud-box"></div><span>95% Confidence Cloud</span></div>
+                <div className="leg-item"><div className="dot" style={{background: 'var(--brand-primary)', boxShadow: '0 0 8px var(--brand-primary-glow)'}}></div><span>Most Likely</span></div>
+                <div className="leg-item"><div className="dot" style={{background: 'var(--success)', boxShadow: '0 0 8px rgba(8, 187, 129, 0.4)'}}></div><span>Optimistic Bound</span></div>
+                <div className="leg-item"><div className="dot" style={{background: 'var(--error)', boxShadow: '0 0 8px rgba(242, 54, 69, 0.4)'}}></div><span>Pessimistic Bound</span></div>
+                <div className="leg-item"><div className="cloud-box" style={{ background: 'rgba(41, 98, 255, 0.2)', border: '1px solid rgba(41, 98, 255, 0.4)' }}></div><span>95% Confidence Cloud</span></div>
              </div>
           </div>
 
@@ -270,39 +272,39 @@ const MultiversePage: React.FC = () => {
       </main>
       
       <style>{`
-        .empty-state-quantum { min-height: 500px; display: flex; align-items: center; justify-content: center; }
-        .quantum-logo-large { font-size: 4rem; color: var(--accent); margin-bottom: 20px; animation: rotate 10s linear infinite; }
+        .empty-state-quantum { min-height: 600px; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .quantum-logo-large { font-size: 4rem; color: var(--brand-primary); margin-bottom: 20px; animation: rotate 10s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        .quick-scan-grid-quantum { display: grid; gridTemplateColumns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
-        .quantum-chip { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 20px; border-radius: 12px; cursor: pointer; transition: all 0.3s; text-align: left; }
-        .quantum-chip:hover { border-color: var(--accent); background: rgba(0, 240, 255, 0.05); transform: translateY(-3px); }
-        .chip-symbol { font-weight: 800; color: var(--accent); font-size: 1.1rem; }
+        .quick-scan-grid-quantum { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
+        .quantum-chip { background: var(--bg-pannel); border: 1px solid var(--glass-border); padding: 20px; border-radius: 12px; cursor: pointer; transition: all 0.3s; text-align: left; }
+        .quantum-chip:hover { border-color: var(--brand-primary); background: var(--brand-primary-glow); transform: translateY(-3px); }
+        .chip-symbol { font-weight: 800; color: var(--brand-primary); font-size: 1.1rem; }
         .chip-name { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
         .chip-action { font-size: 0.6rem; color: var(--text-dark); margin-top: 12px; font-weight: 700; letter-spacing: 1px; }
         
-        .deep-scan-trigger { width: 100%; padding: 20px; background: transparent; border: 1px dashed var(--accent); color: var(--accent); font-weight: 800; letter-spacing: 2px; border-radius: 12px; cursor: pointer; transition: all 0.3s; }
-        .deep-scan-trigger:hover { background: rgba(0, 240, 255, 0.05); border-style: solid; box-shadow: 0 0 30px rgba(0, 240, 255, 0.1); }
+        .deep-scan-trigger { width: 100%; padding: 20px; background: transparent; border: 1px dashed var(--brand-primary); color: var(--brand-primary); font-weight: 800; letter-spacing: 2px; border-radius: 12px; cursor: pointer; transition: all 0.3s; }
+        .deep-scan-trigger:hover { background: var(--brand-primary-glow); border-style: solid; box-shadow: 0 0 30px var(--brand-primary-glow); }
         
-        .widget-quantum { background: var(--bg-elevated); padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 20px; }
-        .widget-title-quantum { font-size: 0.75rem; font-weight: 800; color: var(--text-dark); textTransform: uppercase; margin-bottom: 15px; letter-spacing: 1px; }
+        .widget-quantum { background: var(--glass-bg); backdrop-filter: var(--glass-blur); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+        .widget-title-quantum { font-size: 0.75rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px; }
         .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .spec-item { display: flex; flex-direction: column; }
         .spec-item .label { font-size: 0.65rem; color: var(--text-muted); }
-        .spec-item .val { font-size: 0.85rem; font-weight: 700; }
+        .spec-item .val { font-size: 0.85rem; font-weight: 700; color: var(--text-bright); }
         
         .legend-list-quantum { display: flex; flex-direction: column; gap: 12px; }
-        .leg-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
+        .leg-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--text-main); }
         .leg-item .dot { width: 12px; height: 12px; border-radius: 3px; }
-        .leg-item .cloud-box { width: 12px; height: 12px; border-radius: 3px; background: rgba(41, 98, 255, 0.2); }
+        .leg-item .cloud-box { width: 12px; height: 12px; border-radius: 3px; }
         
-        .ad-widget-quantum { background: linear-gradient(135deg, rgba(41, 98, 255, 0.1) 0%, transparent 100%); padding: 24px; border-radius: 16px; border: 1px solid rgba(41, 98, 255, 0.2); text-align: center; }
+        .ad-widget-quantum { background: linear-gradient(135deg, var(--brand-primary-glow) 0%, transparent 100%); padding: 24px; border-radius: 16px; border: 1px solid var(--brand-primary-glow); text-align: center; }
         .shield-icon { font-size: 2rem; margin-bottom: 10px; }
-        .ad-widget-quantum h3 { font-size: 1rem; margin-bottom: 8px; color: var(--text-main); }
+        .ad-widget-quantum h3 { font-size: 1rem; margin-bottom: 8px; color: var(--text-bright); }
         .ad-widget-quantum p { font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
         
-        .error-glow { color: #F23645; padding: 20px; background: rgba(242, 54, 69, 0.1); border-radius: 8px; margin-top: 30px; border: 1px solid rgba(242, 54, 69, 0.2); text-shadow: 0 0 10px rgba(242, 54, 69, 0.3); }
-        .quantum-footer-disclaimer { margin-top: 40px; padding: 20px; text-align: center; color: var(--text-dark); font-size: 0.7rem; line-height: 1.6; border-top: 1px solid var(--border); }
+        .error-glow { color: var(--error); padding: 20px; background: hsla(355, 78%, 56%, 0.1); border-radius: 8px; margin-top: 30px; border: 1px solid hsla(355, 78%, 56%, 0.2); text-shadow: 0 0 10px hsla(355, 78%, 56%, 0.3); }
+        .quantum-footer-disclaimer { margin-top: 40px; padding: 20px; text-align: center; color: var(--text-dim); font-size: 0.7rem; line-height: 1.6; border-top: 1px solid var(--glass-border); }
       `}</style>
     </div>
   );

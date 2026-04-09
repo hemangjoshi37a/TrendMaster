@@ -84,13 +84,13 @@ const TopNav: React.FC<TopNavProps> = ({
       <div className="pt-nav-right">
          {searchElement}
          {!hidePnl && (
-             <div className="pt-account-chip" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.5px' }}>EQUITY</span>
-                <span style={{ fontWeight: 700, color: '#EAECEF', fontSize: '0.9rem' }}>₹{totalEquity.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
-                <div style={{ width: '1px', height: '14px', background: 'var(--border)', margin: '0 4px' }} />
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.5px' }}>PNL</span>
-                <span style={{ color: totalUnrealized >= 0 ? '#0ECB81' : '#F6465D', fontWeight: 700, fontSize: '0.9rem' }}>
-                  {totalUnrealized >= 0 ? '+' : ''}₹{totalUnrealized.toLocaleString('en-IN', {maximumFractionDigits: 0})}
+             <div className="pt-account-chip">
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.5px' }}>EQUITY</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-bright)', fontSize: '0.9rem' }}>₹{totalEquity.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
+                <div style={{ width: '1px', height: '14px', background: 'var(--glass-border)', margin: '0 4px' }} />
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.5px' }}>PNL</span>
+                <span style={{ color: totalUnrealized >= 0 ? 'var(--success)' : 'var(--error)', fontWeight: 700, fontSize: '0.9rem' }}>
+                   {totalUnrealized >= 0 ? '+' : ''}₹{totalUnrealized.toLocaleString('en-IN', {maximumFractionDigits: 0})}
                 </span>
              </div>
          )}

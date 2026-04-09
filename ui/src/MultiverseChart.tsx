@@ -35,23 +35,35 @@ const MultiverseChart: React.FC<MultiverseChartProps> = ({ data }) => {
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#787B86',
+        textColor: '#d1d4dc',
         fontSize: 12,
-        fontFamily: 'Inter, -apple-system, system-ui, sans-serif',
+        fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
-        vertLines: { color: 'rgba(42, 46, 57, 0.1)' },
-        horzLines: { color: 'rgba(42, 46, 57, 0.1)' },
+        vertLines: { color: 'rgba(42, 46, 57, 0.2)' },
+        horzLines: { color: 'rgba(42, 46, 57, 0.2)' },
       },
       crosshair: {
         mode: 1,
-        vertLine: { color: '#787B86', width: 1, style: 3, labelBackgroundColor: '#2962FF' },
-        horzLine: { color: '#787B86', width: 1, style: 3, labelBackgroundColor: '#2962FF' },
+        vertLine: { color: '#00d2ff', width: 1, style: 3, labelBackgroundColor: '#00d2ff' },
+        horzLine: { color: '#00d2ff', width: 1, style: 3, labelBackgroundColor: '#00d2ff' },
       },
-      rightPriceScale: { borderColor: 'rgba(42, 46, 57, 0.8)', autoScale: true },
-      timeScale: { borderColor: 'rgba(42, 46, 57, 0.8)', timeVisible: true },
+      rightPriceScale: { 
+        borderColor: 'rgba(42, 46, 57, 0.3)', 
+        autoScale: true,
+        scaleMargins: {
+          top: 0.2,
+          bottom: 0.2,
+        },
+      },
+      timeScale: { 
+        borderColor: 'rgba(42, 46, 57, 0.3)', 
+        timeVisible: true,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      },
       width: container.clientWidth,
-      height: container.clientHeight || 450,
+      height: container.clientHeight || 680,
     });
 
     // Stochastic Cloud - Upper Part
@@ -63,7 +75,7 @@ const MultiverseChart: React.FC<MultiverseChartProps> = ({ data }) => {
       lastValueVisible: false,
     });
 
-    // Stochastic Cloud - Lower Part (The "Eraser" layer)
+    // 2. Stochastic Cloud - Lower Part (The "Eraser" layer synchronized with Bg-Obsidian)
     const lowerCloud = chart.addAreaSeries({
       topColor: '#0B0E14', 
       bottomColor: '#0B0E14',
@@ -94,7 +106,7 @@ const MultiverseChart: React.FC<MultiverseChartProps> = ({ data }) => {
     // 5. Best Case Line (Upper Bound)
     const upperLine = chart.addLineSeries({
       color: '#08BB81',
-      lineWidth: 2,
+      lineWidth: 3,
       lineStyle: 0, 
       lastValueVisible: true,
       title: 'BEST CASE',
@@ -103,7 +115,7 @@ const MultiverseChart: React.FC<MultiverseChartProps> = ({ data }) => {
     // 6. Worst Case Line (Lower Bound)
     const lowerLine = chart.addLineSeries({
       color: '#F23645',
-      lineWidth: 2,
+      lineWidth: 3,
       lineStyle: 0, 
       lastValueVisible: true,
       title: 'WORST CASE',
@@ -184,18 +196,19 @@ const MultiverseChart: React.FC<MultiverseChartProps> = ({ data }) => {
   }, [data]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '680px', display: 'flex', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
       <div ref={chartContainerRef} style={{ flex: 1, position: 'relative' }} />
       
-      {/* Probability Density Heatmap Sidebar */}
+      {/* Probability Density Heatmap Sidebar (Refined) */}
       {data.distribution && (
          <div className="prob-heatmap" style={{ 
-            width: '60px', 
-            background: 'var(--bg-panel)', 
-            borderLeft: '1px solid var(--border)',
+            width: '100px', 
+            background: 'rgba(15, 18, 26, 0.4)', 
+            borderLeft: '1px solid var(--glass-border)',
             display: 'flex',
             flexDirection: 'column-reverse',
-            padding: '50px 0 30px' // Offset to match chart axes
+            padding: '40px 0 30px',
+            position: 'relative'
          }}>
             {data.distribution.counts.map((count, i) => {
                const maxCount = Math.max(...data.distribution!.counts);
@@ -204,24 +217,31 @@ const MultiverseChart: React.FC<MultiverseChartProps> = ({ data }) => {
                   <div key={i} style={{ 
                      flex: 1, 
                      width: `${intensity * 100}%`, 
-                     background: `rgba(0, 240, 255, ${0.1 + intensity * 0.7})`,
+                     background: intensity > 0.5 
+                        ? `linear-gradient(90deg, transparent 0%, var(--brand-primary) 100%)` 
+                        : `rgba(0, 240, 255, ${0.05 + intensity * 0.4})`,
                      margin: '1px 0',
-                     borderRadius: '0 2px 2px 0',
+                     borderRadius: '0 4px 4px 0',
                      minHeight: '2px',
-                     boxShadow: intensity > 0.8 ? '0 0 10px rgba(0, 240, 255, 0.4)' : 'none'
+                     boxShadow: intensity > 0.9 ? '0 0 15px var(--brand-primary-glow)' : 'none',
+                     transition: 'all 0.5s ease'
                   }} title={`Density: ${count} realities`} />
                );
             })}
             <div style={{ 
                position: 'absolute', 
-               top: '10px', 
-               right: '5px', 
-               fontSize: '0.6rem', 
-               color: 'var(--text-dark)', 
-               writingMode: 'vertical-rl',
-               textTransform: 'uppercase' 
+               top: '15px', 
+               left: '50%',
+               transform: 'translateX(-50%)',
+               fontSize: '0.65rem', 
+               color: 'var(--text-dim)', 
+               textTransform: 'uppercase',
+               fontWeight: 800,
+               letterSpacing: '1px',
+               width: '100%',
+               textAlign: 'center'
             }}>
-               Density Map
+               Density Area
             </div>
          </div>
       )}

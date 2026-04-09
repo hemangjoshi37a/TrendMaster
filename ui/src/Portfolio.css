@@ -1,8 +1,8 @@
 .portfolio-wrapper {
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-dark);
-  color: var(--text-base);
+  background-color: var(--bg-obsidian);
+  color: var(--text-main);
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
@@ -14,13 +14,15 @@
 }
 
 .portfolio-header h1 {
-  font-size: 2.5rem;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #2962FF, #1E53E5);
+  font-family: 'Outfit', sans-serif;
+  font-size: 3rem;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 8px 0;
+  font-weight: 800;
 }
 
 .portfolio-header p {
@@ -37,12 +39,15 @@
 }
 
 .metric-card {
-  background: var(--surface-bg);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   padding: 24px;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .metric-card-glow {
@@ -50,8 +55,8 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #2962FF, transparent);
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-primary), transparent);
 }
 
 .metric-card.positive .metric-card-glow { background: linear-gradient(90deg, var(--success), transparent); }
@@ -76,10 +81,12 @@
 .metric-card.negative .metric-value { color: var(--error); }
 
 .portfolio-table-container {
-  background: var(--surface-bg);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-md);
 }
 
 .portfolio-table {
@@ -91,12 +98,12 @@
   text-align: left;
   padding: 16px 24px;
   font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(15, 18, 26, 0.5);
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--bg-pannel);
 }
 
 .portfolio-table td {
@@ -113,12 +120,18 @@
 .portfolio-sym-badge {
   font-weight: 700;
   color: var(--text-bright);
-  background: rgba(41, 98, 255, 0.1);
-  border: 1px solid rgba(41, 98, 255, 0.2);
-  padding: 4px 8px;
-  border-radius: 4px;
+  background: var(--brand-primary-glow);
+  border: 1px solid var(--glass-border-bright);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.portfolio-sym-badge:hover {
+  background: var(--brand-primary);
+  color: #fff;
 }
 
 .portfolio-pnl {
@@ -162,13 +175,15 @@
 }
 
 .analytics-card {
-  background: var(--surface-bg);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   padding: 24px;
   min-height: 350px;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-md);
 }
 
 .analytics-card h3 {
@@ -219,14 +234,14 @@
 }
 
 .analytics-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #2962FF;
+  background: var(--bg-pannel-lighter);
+  border-color: var(--brand-primary);
 }
 
 .analytics-toggle.active {
-  background: rgba(41, 121, 255, 0.1);
-  border-color: #2962FF;
-  color: #2962FF;
+  background: var(--brand-primary-glow);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 
 @keyframes slideDown {

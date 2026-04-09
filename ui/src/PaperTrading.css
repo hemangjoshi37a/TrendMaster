@@ -1,25 +1,24 @@
-/* Professional Trading Interface Layout */
-
 .pt-pro-wrapper {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #0B0E14; /* Deep Binance/Exchange style background */
-  color: #B1B5C3;
+  background-color: var(--bg-obsidian);
+  color: var(--text-main);
   overflow: hidden;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
 /* --- Top Navigation --- */
 .pt-pro-nav {
-  height: 60px;
-  background-color: #141822; /* Slightly lighter for elevation */
-  border-bottom: 1px solid #2B3139;
+  height: 64px;
+  background-color: var(--bg-pannel);
+  border-bottom: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
   flex-shrink: 0;
+  backdrop-filter: var(--glass-blur);
 }
 
 .pt-nav-left {
@@ -29,16 +28,18 @@
 }
 
 .pt-brand {
-  font-size: 1.2rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.4rem;
   font-weight: 800;
-  color: #EAECEF;
+  color: var(--text-bright);
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: -0.02em;
 }
 .pt-brand span {
-  color: #2962FF; /* Accent */
+  color: var(--brand-primary);
 }
 
 .pt-nav-links {
@@ -47,13 +48,14 @@
 }
 .pt-nav-links a {
   text-decoration: none;
-  color: #848E9C;
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
   font-weight: 600;
-  transition: color 0.2s;
+  transition: all 0.2s;
 }
 .pt-nav-links a:hover, .pt-nav-links a.active {
-  color: #EAECEF;
+  color: var(--text-bright);
+  text-shadow: 0 0 10px var(--brand-primary-glow);
 }
 
 .pt-nav-right {
@@ -62,16 +64,17 @@
   gap: 16px;
 }
 .pt-account-chip {
-  background: rgba(41, 98, 255, 0.15);
-  border: 1px solid rgba(41, 98, 255, 0.3);
-  padding: 6px 12px;
-  border-radius: 4px;
+  background: var(--brand-primary-glow);
+  border: 1px solid var(--glass-border-bright);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
   font-weight: 600;
-  color: #fff;
+  color: var(--text-bright);
   font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
 }
 
 /* --- Main Workspace --- */
