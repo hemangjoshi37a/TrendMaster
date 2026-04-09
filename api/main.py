@@ -162,7 +162,7 @@ app.add_middleware(
 )
 
 # --- Prediction Logic ---
-def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", shock_pct=0.0):
+def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", shock_pct=0.0, vix=15.0):
     print(f"--- Starting prediction for {symbol} (period={period}, shock={shock_pct}%) ---")
     yf_symbol = f"{symbol}.NS"
     ticker = yf.Ticker(yf_symbol)
@@ -191,6 +191,26 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", s
         df_for_indicators.iloc[-1, df_for_indicators.columns.get_loc('high')] *= multiplier
         df_for_indicators.iloc[-1, df_for_indicators.columns.get_loc('low')] *= multiplier
         print(f"Applied shock of {shock_pct}%. New Close: {df_for_indicators['close'].iloc[-1]}")
+
+    if vix > 15.0:
+        # Volatility Shock: Add Gaussian noise to the input features
+        # The higher the VIX, the more the 'chaos'
+        import numpy as np
+        chaos_factor = (vix - 15.0) / 200.0  # Normalized factor
+        
+        # Perturb the last window of data that the Transformer uses
+        cols_to_perturb = ['close', 'high', 'low']
+        for col in cols_to_perturb:
+            if col in df_for_indicators.columns:
+                # Calculate standard deviation for scale-aware noise
+                std = df_for_indicators[col].rolling(window=10).std().iloc[-1]
+                if np.isnan(std): std = df_for_indicators[col].iloc[-1] * 0.01
+                
+                # Apply noise to the tail
+                noise = np.random.normal(0, std * chaos_factor, min(len(df_for_indicators), input_window))
+                df_for_indicators.iloc[-len(noise):, df_for_indicators.columns.get_loc(col)] += noise
+        
+        print(f"Injected chaos factor: {chaos_factor:.3f} (VIX: {vix})")
 
     df_with_indicators = data_loader.add_technical_indicators(df_for_indicators)
     
@@ -244,22 +264,33 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", s
         future_dates = predictions_df['Date'].dt.strftime('%Y-%m-%d').tolist()
 
         # Compute a real confidence score based on prediction smoothness.
-        # We measure the coefficient of variation (std/mean) of the predicted
-        # daily returns. Very erratic predictions → low confidence.
-        # Score is mapped to [0, 100] and clamped.
         if len(pred_rescaled) > 1:
             daily_returns = np.diff(pred_rescaled) / (np.abs(pred_rescaled[:-1]) + 1e-9)
             cv = np.std(daily_returns) / (np.mean(np.abs(daily_returns)) + 1e-9)
-            # cv near 0 = very smooth (high confidence), cv >> 1 = erratic (low)
             confidence_score = float(np.clip(100 * (1 / (1 + cv)), 0, 100))
         else:
             confidence_score = 50.0
+
+        # --- Guardian Stop-Loss Calculation ---
+        # We use the dynamic historical volatility to set a safe exit
+        window = 20
+        recent_prices = df_for_indicators['close'].tail(window)
+        vol = recent_prices.std()
+        if np.isnan(vol) or vol == 0: vol = recent_prices.iloc[-1] * 0.02 # Fallback to 2%
+        
+        # Adjust multiplier based on horizon (deeper stops for longer terms)
+        sl_multiplier = 2.0
+        if future_steps >= 60: sl_multiplier = 3.0
+        elif future_steps >= 20: sl_multiplier = 2.5
+        
+        stop_loss = float(recent_prices.iloc[-1] - (sl_multiplier * vol))
         
         return {
             "dates": hist_dates + future_dates,
             "prices": [float(p) for p in full_series],
             "prediction_start_index": history_to_show,
-            "confidence_score": round(confidence_score, 1)
+            "confidence_score": round(confidence_score, 1),
+            "suggested_stop_loss": round(stop_loss, 2)
         }
     except Exception as e:
         print(f"Prediction error for {symbol}: {e}")
@@ -364,7 +395,8 @@ def predict_stock(
 def simulate_shock(
     stock_symbol: str,
     period: str = Query("1y", regex="^(1mo|3mo|6mo|1y|2y|5y|max)$"),
-    shock_pct: float = Query(0.0)
+    shock_pct: float = Query(0.0),
+    vix: float = Query(15.0)
 ):
     symbol_upper = stock_symbol.strip().upper()
     if not re.match(r'^[A-Z0-9&_.-]{1,20}$', symbol_upper):
@@ -373,7 +405,7 @@ def simulate_shock(
     company_name = symbol_to_name.get(symbol_upper, symbol_upper)
     
     try:
-        data = get_real_prediction(symbol_upper, period=period, shock_pct=shock_pct)
+        data = get_real_prediction(symbol_upper, period=period, shock_pct=shock_pct, vix=vix)
         return {
             "symbol": symbol_upper,
             "company_name": company_name,
@@ -470,6 +502,11 @@ def get_multiverse_prediction(
         data_loader.preprocess_data(df_with_indicators, columns=features, train=True)
         inferencer = Inferencer(model, device, data_loader)
         
+        # Define historical data for response
+        history_to_show = min(60, len(df))
+        close_prices = df_for_indicators['close'].values[-history_to_show:]
+        hist_dates = df.index[-history_to_show:].strftime('%Y-%m-%d').tolist()
+        
         # Stochastic Prediction (Multiverse)
         mean_df, upper_df, lower_df, all_samples = inferencer.predict(
             symbol_upper, df.index[0], df.index[-1], 30, 10, 
@@ -477,21 +514,37 @@ def get_multiverse_prediction(
             return_all_samples=True
         )
         
-        # Calculate distribution for the final day (last step of the 10-day forecast)
-        final_day_samples = all_samples[:, -1]
-        hist, bin_edges = np.histogram(final_day_samples, bins=10)
-        distribution = {
-            "bins": [float(b) for b in bin_edges],
-            "counts": [int(c) for c in hist],
-            "chaos_score": round(float(np.std(final_day_samples) / np.mean(final_day_samples) * 100), 2)
-        }
-        
-        history_to_show = min(60, len(df))
-        close_prices = df_for_indicators['close'].values[-history_to_show:]
-        hist_dates = df.index[-history_to_show:].strftime('%Y-%m-%d').tolist()
-        
         future_dates = mean_df['Date'].dt.strftime('%Y-%m-%d').tolist()
         
+        # Enhanced Risk Analysis
+        current_price = float(close_prices[-1])
+        risk_stats = inferencer.calculate_risk_metrics(all_samples, current_price)
+        
+        # Calculate Distribution (Intelligence Gauge)
+        final_prices = all_samples[:, -1]
+        counts, bins = np.histogram(final_prices, bins=10)
+        
+        # Chaos Score: standard deviation of final prices relative to mean (mapped 0-10)
+        chaos_score = (np.std(final_prices) / (np.mean(final_prices) + 1e-9)) * 100
+        
+        distribution = {
+            "bins": [round(float(b), 2) for b in bins.tolist()],
+            "counts": [int(c) for c in counts.tolist()],
+            "chaos_score": round(float(chaos_score), 2)
+        }
+        
+        # Scenario Matrix (T+1, T+3, T+5, T+10)
+        matrix = []
+        for step in [0, 2, 4, 9]: # 0-indexed steps for 1st, 3rd, 5th, 10th day
+            if step < len(mean_df):
+                matrix.append({
+                    "day": step + 1,
+                    "date": mean_df['Date'].iloc[step].strftime('%Y-%m-%d'),
+                    "mean": float(mean_df['Predicted_Close'].iloc[step]),
+                    "upper": float(upper_df['Predicted_Close'].iloc[step]),
+                    "lower": float(lower_df['Predicted_Close'].iloc[step])
+                })
+
         return {
             "symbol": symbol_upper,
             "dates": hist_dates + future_dates,
@@ -500,11 +553,40 @@ def get_multiverse_prediction(
             "cloud_lower": [float(p) for p in lower_df['Predicted_Close'].tolist()],
             "prediction_start_index": len(close_prices),
             "distribution": distribution,
+            "risk_stats": risk_stats,
+            "matrix": matrix,
             "is_stochastic": True
         }
     except Exception as e:
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/multiverse/deep-scan")
+def historical_stochastic_scan(
+    stock_symbol: str, 
+    period: str = Query("1y")
+):
+    """
+    Run a heavy historical Monte Carlo scan across the past year.
+    """
+    symbol_upper = stock_symbol.strip().upper()
+    try:
+        ticker = yf.Ticker(f"{symbol_upper}.NS")
+        df = ticker.history(period=period)
+        if df.empty: raise Exception("No data")
+        
+        # Prepare inferencer
+        model = get_model(symbol_upper)
+        if not model: raise Exception("No model found")
+        
+        df_clean = df.rename(columns={'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'})
+        data_loader.preprocess_data(df_clean, train=True)
+        inferencer = Inferencer(model, device, data_loader)
+        
+        results = inferencer.stochastic_backtest(symbol_upper, df.index[0].strftime('%Y-%m-%d'), df.index[-1].strftime('%Y-%m-%d'))
+        return {"symbol": symbol_upper, "scan_results": results}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/market-overview")
@@ -758,6 +840,187 @@ def get_sector_heatmap():
     heatmap_data.sort(key=lambda x: x['weight'], reverse=True)
     return heatmap_data
 
+SECTOR_UNIVERSE = {
+    'Banking': ['HDFCBANK', 'ICICIBANK', 'SBIN', 'AXISBANK', 'KOTAKBANK', 'PNB', 'IDFCFIRSTB', 'FEDERALBNK'],
+    'IT': ['TCS', 'INFY', 'WIPRO', 'HCLTECH', 'TECHM', 'LTIM', 'COFORGE', 'PERSISTENT'],
+    'Auto': ['TATAMOTORS', 'MARUTI', 'M&M', 'EICHERMOT', 'BAJAJ-AUTO', 'HEROMOTOCO', 'TVSMOTOR'],
+    'Pharma': ['SUNPHARMA', 'DRREDDY', 'CIPLA', 'APOLLOHOSP', 'DIVISLAB', 'ZYDUSLIFE', 'AUROPHARMA'],
+    'Energy': ['RELIANCE', 'ONGC', 'BPCL', 'POWERGRID', 'NTPC', 'GAIL', 'ADANIGREEN', 'TATAPOWER'],
+    'FMCG': ['ITC', 'HINDUNILVR', 'BRITANNIA', 'NESTLEIND', 'VBL', 'TATACONSUM', 'GODREJCP'],
+    'Metal': ['TATASTEEL', 'JSWSTEEL', 'HINDALCO', 'COALINDIA', 'VEDL', 'NMDC', 'SAIL'],
+}
+
+@app.get("/api/wealth-advisor")
+async def wealth_advisor(
+    budget: float = Query(..., gt=0),
+    sector: str = Query("All"),
+    stock_type: str = Query("Mid", regex="^(Penny|Mid|Large)$"),
+    risk: str = Query("Balanced"),
+    horizon: int = Query(10)
+):
+    """
+    AI Investment Advisor: Based on budget and preferences, suggests the top 3 stocks.
+    """
+    import random
+    # 1. Determine candidates (Entire sector pool)
+    candidate_symbols = []
+    if sector == "All":
+        for stocks in SECTOR_UNIVERSE.values():
+            candidate_symbols.extend(stocks)
+    else:
+        candidate_symbols = SECTOR_UNIVERSE.get(sector, SECTOR_UNIVERSE['Banking'])
+
+    unique_candidates = list(set(candidate_symbols))
+    yf_tickers = [f"{s}.NS" for s in unique_candidates]
+    print(f"--- Wealth Advisor Deep Scan for {sector}/{stock_type} (Horizon: {horizon}) ---")
+    
+    # 2. Robust Price Fetching
+    current_prices = {}
+    try:
+        price_df = yf.download(yf_tickers, period="5d", progress=False)['Close']
+        if not price_df.empty:
+            for sym in unique_candidates:
+                ticker_col = f"{sym}.NS"
+                if len(unique_candidates) == 1:
+                    val = price_df.dropna()
+                    if not val.empty: current_prices[sym] = float(val.iloc[-1])
+                elif ticker_col in price_df.columns:
+                    val = price_df[ticker_col].dropna()
+                    if not val.empty: current_prices[sym] = float(val.iloc[-1])
+    except Exception as e:
+        print(f"Batch price error: {e}")
+
+    # Fallback to single Ticker fetch for missing prices
+    for sym in unique_candidates:
+        if sym not in current_prices:
+            try:
+                p = yf.Ticker(f"{sym}.NS").fast_info['last_price']
+                if p: current_prices[sym] = float(p)
+            except: pass
+
+    # 3. Comprehensive Scanning (No random.shuffle yet, scan based on price match)
+    all_valid_results = []
+    
+    def check_match(price, s_type, margin=0.0):
+        low, high = 0, 1e9
+        if s_type == "Penny": low, high = 0, 250 * (1 + margin)
+        elif s_type == "Mid": low, high = 250 * (1 - margin), 1500 * (1 + margin)
+        elif s_type == "Large": low, high = 1500 * (1 - margin), 1e9
+        return low <= price <= high
+
+    # Scan the whole pool for exact price matches first
+    matched_syms = [s for s, p in current_prices.items() if check_match(p, stock_type, 0.2)]
+    
+    if not matched_syms:
+        # Emergency relaxation: if nothing in chosen type, just take anything from sector
+        matched_syms = list(current_prices.keys())
+        print(f"Warning: No exact {stock_type} matches. Falling back to entire sector pool.")
+
+    # Prioritize by predicted alpha (we have to run prediction for all matched syms)
+    # To keep it fast, we scan up to 15 candidates
+    random.shuffle(matched_syms) 
+    candidates_to_analyze = matched_syms[:15]
+    
+    for sym in candidates_to_analyze:
+        try:
+            curr_price = current_prices[sym]
+            print(f"Analyzing {sym} (₹{curr_price})...")
+            
+            # Use longer period for advisor to ensure data stability
+            pred = get_real_prediction(sym, future_steps=horizon, vix=15.0)
+            
+            if not pred or "prices" not in pred or "prediction_start_index" not in pred:
+                continue
+            if "warning" in pred and "No predictive model" in pred["warning"]:
+                continue
+                
+            psi = pred['prediction_start_index']
+            prices = pred['prices']
+            if len(prices) <= psi: continue
+            
+            start_price = prices[psi - 1]
+            end_price = prices[-1]
+            pred_return = ((end_price - start_price) / (start_price + 1e-9)) * 100
+            conf = pred.get('confidence_score', 50.0)
+            
+            all_valid_results.append({
+                "symbol": sym,
+                "name": symbol_to_name.get(sym, sym),
+                "price": round(curr_price, 2),
+                "predicted_return": round(pred_return, 2),
+                "confidence": conf,
+                "wealth_score": pred_return * (conf / 100.0),
+                "suggested_stop_loss": pred.get('suggested_stop_loss'),
+                "horizon": horizon
+            })
+        except Exception as e:
+            print(f"Advisor scan error for {sym}: {e}")
+            continue
+
+    # 4. Final Selection
+    all_valid_results.sort(key=lambda x: x['wealth_score'], reverse=True)
+    top_3 = all_valid_results[:3]
+
+    if not top_3:
+         # Hardest Fallback: If AI fails for all, just return the top 3 by market price alone
+         # to avoid the 'No Suitable Stocks Found' loop.
+         fallback_candidates = sorted(matched_syms, key=lambda s: current_prices[s], reverse=True)[:3]
+         for sym in fallback_candidates:
+             top_3.append({
+                 "symbol": sym,
+                 "name": symbol_to_name.get(sym, sym),
+                 "price": round(current_prices[sym], 2),
+                 "predicted_return": 0.0,
+                 "confidence": 0,
+                 "wealth_score": 0,
+                 "rationale": "AI Signal unavailable for this symbol. Showing market-cap leader as fallback.",
+                 "horizon": horizon
+             })
+
+    # Allocation Logic
+    splits = [0.45, 0.35, 0.20]
+    final_recs = []
+    
+    for i, res in enumerate(top_3):
+        allocated_amt = budget * splits[i]
+        shares = int(allocated_amt // res['price'])
+        if shares == 0: shares = 1 # Guarantee at least 1
+        
+        res['recommended_qty'] = shares
+        res['total_cost'] = round(shares * res['price'], 2)
+        
+        # Narrative
+        if "rationale" not in res:
+            h_label = f"{horizon} days"
+            if horizon >= 60: h_label = "3 months"
+            elif horizon >= 22: h_label = "1 month"
+            
+            if res['predicted_return'] > 5:
+                res['rationale'] = f"Strong alpha candidate for the {h_label} horizon. Transformer identifies a structural trend with {res['confidence']}% accuracy."
+            elif res['predicted_return'] > 0:
+                res['rationale'] = f"Steady accumulation recommended. Model projects low-volatility appreciation over the {h_label} period."
+            else:
+                res['rationale'] = f"Asset preservation play. AI model favors this symbol for stability in the requested {h_label} window."
+        
+        final_recs.append(res)
+
+    return {
+        "budget": budget,
+        "horizon": horizon,
+        "total_allocated": round(sum(r['total_cost'] for r in final_recs), 2),
+        "recommendations": final_recs
+    }
+
+    if not final_recs:
+        raise HTTPException(status_code=400, detail="Budget too low for horizon-selected leaders.")
+
+    return {
+        "budget": budget,
+        "horizon": horizon,
+        "total_allocated": round(sum(r['total_cost'] for r in final_recs), 2),
+        "recommendations": final_recs
+    }
+
 @app.get("/api/quote")
 def get_live_quote(symbol: str):
     """Fetch real-time snapshot quote for a single symbol."""
@@ -781,6 +1044,7 @@ def get_live_quote(symbol: str):
     except Exception as e:
         print(f"Error fetching quote for {symbol_upper}: {e}")
         raise HTTPException(status_code=404, detail=f"Failed to fetch quote for {symbol_upper}")
+
 
 @app.websocket("/ws/ticks/{symbol}")
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
