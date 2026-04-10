@@ -380,26 +380,22 @@ function Dashboard() {
           </div>
         }
         rightActions={
-          <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '16px' }}>
+          <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginLeft: 'var(--spacing-md)' }}>
             <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
               <span className="status-dot"></span>
               {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
             </div>
             <button 
               onClick={handleLogout}
+              className="glass-pannel"
               style={{
-                background: 'transparent',
+                background: 'var(--bg-pannel-lighter)',
                 color: 'var(--text-muted)',
-                border: '1px solid var(--border)',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-md)',
-                cursor: 'pointer',
+                padding: '8px 16px',
                 fontSize: '0.85rem',
                 fontWeight: 600,
-                transition: 'all 0.2s ease'
+                cursor: 'pointer',
               }}
-              onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
-              onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
             >
               Logout
             </button>
@@ -411,19 +407,20 @@ function Dashboard() {
       {!isExpired && (
         <div style={{
           background: isPro
-            ? 'linear-gradient(90deg, rgba(8,153,129,0.15), transparent)'
+            ? 'linear-gradient(90deg, var(--brand-accent-glow), transparent)'
             : daysRemaining <= 3
-              ? 'linear-gradient(90deg, rgba(242,54,69,0.15), transparent)'
-              : 'linear-gradient(90deg, rgba(41,98,255,0.12), transparent)',
+              ? 'linear-gradient(90deg, hsla(355, 78%, 56%, 0.15), transparent)'
+              : 'linear-gradient(90deg, var(--brand-primary-glow), transparent)',
           borderBottom: '1px solid',
-          borderColor: isPro ? '#089981' : daysRemaining <= 3 ? '#f23645' : '#2962FF',
+          borderColor: isPro ? 'var(--brand-accent)' : daysRemaining <= 3 ? 'var(--error)' : 'var(--brand-primary)',
           padding: '8px 24px',
           fontSize: '0.85rem',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          backdropFilter: 'var(--glass-blur)'
         }}>
-          <span style={{ color: '#d1d4dc' }}>
+          <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
             {isPro
               ? `✅ Pro Terminal — ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining in your subscription`
               : `⏳ Free Trial — ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining. Upgrade to keep full access.`}
@@ -431,7 +428,8 @@ function Dashboard() {
           {!isPro && (
             <button
               onClick={() => setShowPricing(true)}
-              style={{ fontSize: '0.8rem', padding: '4px 14px', background: '#2962FF', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+              className="glow-button"
+              style={{ fontSize: '0.8rem', padding: '6px 16px', background: 'var(--brand-primary)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700 }}
             >
               Upgrade to Pro
             </button>
@@ -458,22 +456,32 @@ function Dashboard() {
       {/* Expired Full Paywall */}
       {isExpired && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(15,18,26,0.97)',
+          position: 'fixed', inset: 0, background: 'var(--bg-obsidian)',
           backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', zIndex: 9999, textAlign: 'center', padding: '40px'
+          alignItems: 'center', justifyContent: 'center', zIndex: 9999, textAlign: 'center', padding: 'var(--spacing-xl)'
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>{isPro ? '🔄' : '🔒'}</div>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', marginBottom: '16px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: 'var(--spacing-md)', animation: 'glowPulse 2s infinite' }}>{isPro ? '🔄' : '🔒'}</div>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-bright)', marginBottom: 'var(--spacing-md)', fontFamily: 'Outfit' }}>
             {isPro ? 'Your Pro Subscription Has Expired' : 'Your 10-Day Free Trial Has Ended'}
           </h2>
-          <p style={{ color: '#8c9bad', fontSize: '1.1rem', maxWidth: '500px', lineHeight: 1.6, marginBottom: '40px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '500px', lineHeight: 1.6, marginBottom: 'var(--spacing-xl)' }}>
             {isPro
               ? 'Renew your Pro plan to continue accessing real-time forecasts, confidence scores, and the full 10-day prediction horizon.'
               : 'You have used your free 10-day trial. Subscribe to Pro to continue making AI-powered predictions on NSE stocks.'}
           </p>
           <button
             onClick={() => setShowPricing(true)}
-            style={{ padding: '18px 48px', background: 'linear-gradient(90deg, #2962FF, #1E53E5)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 8px 32px rgba(41,98,255,0.4)' }}
+            style={{ 
+              padding: '18px 48px', 
+              background: 'linear-gradient(90deg, var(--brand-primary), var(--brand-accent))', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: 'var(--radius-lg)', 
+              fontWeight: 800, 
+              fontSize: '1.2rem', 
+              cursor: 'pointer', 
+              boxShadow: 'var(--shadow-lg)' 
+            }}
           >
             {isPro ? 'Renew Pro — $49/mo' : 'Subscribe to Pro — $49/mo'}
           </button>
@@ -593,19 +601,19 @@ function Dashboard() {
                       {currentSymbol && (
                         <button
                           onClick={() => fetchPrediction(currentSymbol, selectedTimeframe)}
+                          className="glass-pannel"
                           style={{
-                            marginTop: '16px',
-                            padding: '8px 20px',
-                            background: 'var(--accent)',
+                            marginTop: 'var(--spacing-md)',
+                            padding: '10px 24px',
+                            background: 'var(--brand-primary)',
                             color: 'white',
                             border: 'none',
-                            borderRadius: 'var(--radius-md)',
                             cursor: 'pointer',
-                            fontWeight: 600,
+                            fontWeight: 700,
                             fontSize: '0.85rem'
                           }}
                         >
-                          ↺ Retry
+                          ↺ Retry Analysis
                         </button>
                       )}
                     </>

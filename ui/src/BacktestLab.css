@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: var(--bg-dark);
+  background-color: var(--bg-obsidian);
 }
 
 .backtest-lab {
@@ -24,13 +24,15 @@
 }
 
 .backtest-title h1 {
-  font-size: 2rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.5rem;
   font-weight: 800;
   margin-bottom: 8px;
-  background: linear-gradient(90deg, #fff, #8c9bad);
+  background: linear-gradient(90deg, var(--text-bright), var(--text-muted));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  letter-spacing: -0.04em;
 }
 
 .backtest-title p {
@@ -40,11 +42,12 @@
 .backtest-controls {
   display: flex;
   gap: 16px;
-  background: rgba(42, 46, 57, 0.4);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   padding: 16px 24px;
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
 }
 
 .control-group {
@@ -62,38 +65,41 @@
 }
 
 .backtest-input {
-  background: #131722;
-  border: 1px solid #363c4e;
-  color: #d1d4dc;
+  background: var(--bg-pannel);
+  border: 1px solid var(--glass-border);
+  color: var(--text-bright);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
 .backtest-input:focus {
-  border-color: var(--accent);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 10px var(--brand-primary-glow);
 }
 
 .run-backtest-btn {
   align-self: flex-end;
-  background: var(--accent);
+  background: var(--brand-primary);
   color: white;
   border: none;
   padding: 12px 28px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   gap: 10px;
+  box-shadow: 0 4px 12px var(--brand-primary-glow);
 }
 
 .run-backtest-btn:hover:not(:disabled) {
-  background: #1e53e5;
-  transform: translateY(-1px);
+  background: var(--brand-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--brand-primary-glow);
 }
 
 .run-backtest-btn:disabled {
@@ -108,13 +114,15 @@
 }
 
 .chart-section {
-  background: rgba(19, 23, 34, 0.6);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
   padding: 24px;
   min-height: 500px;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-md);
 }
 
 .metrics-section {
@@ -124,14 +132,16 @@
 }
 
 .metric-card {
-  background: rgba(42, 46, 57, 0.3);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   padding: 24px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  box-shadow: var(--shadow-sm);
 }
 
 .metric-value {
@@ -151,7 +161,7 @@
 }
 
 .mae-val, .rmse-val {
-  color: var(--accent);
+  color: var(--brand-primary);
 }
 
 .comparison-card {

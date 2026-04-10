@@ -4,7 +4,7 @@
   gap: 2px;
   width: 100%;
   height: 200px;
-  background-color: var(--border);
+  background-color: var(--glass-border);
   padding: 2px;
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -46,12 +46,12 @@
 }
 
 .live-badge {
-  background: rgba(242, 54, 69, 0.15);
-  color: #F23645;
+  background: var(--brand-accent-glow);
+  color: var(--brand-accent);
   font-size: 0.6rem;
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(242, 54, 69, 0.3);
+  border: 1px solid var(--brand-accent-glow);
   font-weight: 800;
   letter-spacing: 0.5px;
 }
@@ -65,7 +65,7 @@
 
 .locked-feature {
   position: relative;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-pannel);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -77,9 +77,9 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: rgba(11, 14, 20, 0.8);
+  background: hsla(225, 27%, 8%, 0.85);
   backdrop-filter: blur(4px);
-  color: #F0A500;
+  color: var(--warning);
   font-weight: 700;
   font-size: 0.85rem;
   gap: 8px;

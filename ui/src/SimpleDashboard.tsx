@@ -240,14 +240,14 @@ function SimpleDashboard() {
                 <>
                   <div className="chart-header">
                     <div className="stock-info">
-                      <div className="stock-symbol">
+                      <div className="stock-symbol" style={{ fontFamily: 'Outfit', fontWeight: 800 }}>
                         {prediction.symbol}
-                        <span className="ws-status reconnecting" style={{background: 'rgba(140, 155, 173, 0.2)', color: '#8c9bad'}}>EOD DATA ONLY</span>
+                        <span className="ws-status reconnecting" style={{background: 'var(--bg-pannel)', color: 'var(--text-dim)', border: '1px solid var(--glass-border)'}}>EOD DATA ONLY</span>
                       </div>
                       <div className="stock-name">{prediction.company_name}</div>
                     </div>
                     <div className="stock-price-container">
-                      <div className="current-price">
+                      <div className="current-price" style={{ fontFamily: 'JetBrains Mono', fontWeight: 800 }}>
                         {prediction.prices[prediction.prediction_start_index - 1]?.toFixed(2) || "---"}
                       </div>
                     </div>
@@ -268,7 +268,7 @@ function SimpleDashboard() {
                     </div>
                     <div className="chart-legend">
                       <div className="legend-item">
-                        <div className="legend-color" style={{ background: '#2962FF' }}></div>
+                        <div className="legend-color" style={{ background: 'var(--brand-primary)' }}></div>
                         Historical Data
                       </div>
                     </div>
@@ -277,18 +277,19 @@ function SimpleDashboard() {
                   {prediction.warning && (
                     <div style={{
                       margin: '0 20px 8px',
-                      padding: '8px 12px',
-                      background: 'rgba(41, 98, 255, 0.12)',
-                      border: '1px solid rgba(41, 98, 255, 0.35)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.78rem',
-                      color: '#2962FF',
+                      padding: '12px 16px',
+                      background: 'var(--brand-primary-glow)',
+                      border: '1px solid var(--brand-primary-glow)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.85rem',
+                      color: 'var(--text-bright)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: '12px',
+                      backdropFilter: 'var(--glass-blur)'
                     }}>
-                      <span>ℹ️</span>
-                      <span>You are viewing basic End-Of-Day data. <a href="/#pricing" style={{color: '#2962FF', fontWeight: 'bold'}}>Upgrade to Pro</a> for Live WebSockets and AI Forecasts.</span>
+                      <span style={{ fontSize: '1.2rem' }}>💎</span>
+                      <span style={{ flex: 1 }}>You are viewing basic End-Of-Day data. <a href="/#pricing" style={{color: 'var(--brand-primary)', fontWeight: 'bold', textDecoration: 'none'}}>Upgrade to Pro</a> for Live WebSockets and AI Forecasts.</span>
                     </div>
                   )}
 
@@ -300,46 +301,49 @@ function SimpleDashboard() {
                 <div className="empty-state">
                   {loading ? (
                     <div className="loader">
-                      <div className="loader-spinner"></div>
-                      <p>Loading market data for {query}...</p>
+                      <div className="loader-spinner" style={{ borderColor: 'var(--brand-primary-glow)', borderTopColor: 'var(--brand-primary)' }}></div>
+                      <p style={{ color: 'var(--text-muted)' }}>Loading market data for {query}...</p>
                     </div>
                   ) : error ? (
                     <>
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="1.5">
                         <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
                       </svg>
-                      <h3>Analysis Failed</h3>
-                      <p>{error}</p>
+                      <h3 style={{ color: 'var(--text-bright)' }}>Analysis Failed</h3>
+                      <p style={{ color: 'var(--text-muted)' }}>{error}</p>
                       {currentSymbol && (
                         <button
                           onClick={() => fetchPrediction(currentSymbol, selectedTimeframe)}
                           style={{
                             marginTop: '16px',
-                            padding: '8px 20px',
-                            background: 'var(--accent)',
+                            padding: '10px 24px',
+                            background: 'var(--brand-primary)',
                             color: 'white',
                             border: 'none',
                             borderRadius: 'var(--radius-md)',
                             cursor: 'pointer',
-                            fontWeight: 600,
-                            fontSize: '0.85rem'
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            boxShadow: '0 4px 12px var(--brand-primary-glow)'
                           }}
                         >
-                          ↺ Retry
+                          ↺ Retry Analysis
                         </button>
                       )}
                     </>
                   ) : (
                     <>
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
-                      </svg>
-                      <h3>Basic Dashboard Ready</h3>
-                      <p>Search for an NSE symbol to view historical action.</p>
+                      <div className="empty-state-icon" style={{ marginBottom: '24px', opacity: 0.5, color: 'var(--brand-primary)' }}>
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                      </div>
+                      <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-bright)', fontFamily: 'Outfit' }}>Market Terminal Ready</h3>
+                      <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>Search for an NSE symbol or select a recent asset to begin your analysis.</p>
                       
-                      <div className="recent-list" style={{ marginTop: '24px', justifyContent: 'center' }}>
+                      <div className="recent-list" style={{ marginTop: '32px', justifyContent: 'center', gap: '12px' }}>
                         {recentStocks.slice(0, 5).map(s => (
-                          <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                          <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)} style={{ padding: '8px 16px', background: 'var(--bg-pannel)', border: '1px solid var(--glass-border)' }}>
                             {s.symbol}
                           </div>
                         ))}
@@ -353,7 +357,7 @@ function SimpleDashboard() {
             {/* Price Table Panel */}
             {prediction && (
               <div className="table-panel">
-                <div className="panel-title">Historical Data (Last 5 Days)</div>
+                <div className="panel-title" style={{ fontFamily: 'Outfit', letterSpacing: '1px', fontWeight: 700 }}>HISTORICAL PERFORMANCE (5D)</div>
                 <div className="table-wrapper">
                   <table className="prediction-grid">
                     <thead>
@@ -375,20 +379,21 @@ function SimpleDashboard() {
 
                         return (
                           <tr key={date} className="animate-fade-in-delayed" style={{ animationDelay: `${i * 0.05}s` }}>
-                            <td>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                            <td style={{ color: 'var(--text-bright)' }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)' }}>
-                              {change >= 0 ? '+' : ''}{changePct.toFixed(2)}%
+                            <td style={{ fontWeight: 600 }}>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                            <td style={{ color: 'var(--text-bright)', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td style={{ color: change >= 0 ? 'var(--success)' : 'var(--error)', fontWeight: 800 }}>
+                              {change >= 0 ? '▲' : '▼'} {Math.abs(changePct).toFixed(2)}%
                             </td>
                             <td>
-                              <span style={{ color: '#8c9bad' }}>Settled</span>
+                              <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Settled</span>
                             </td>
                           </tr>
                         );
                       })}
                       <tr>
-                         <td colSpan={4} style={{textAlign: 'center', padding: '20px', color: '#8c9bad', borderBottom: 'none'}}>
-                            🔒 <a href="/#pricing" style={{color: '#2962FF', textDecoration: 'none', fontWeight: 'bold'}}>Upgrade to Pro</a> to unlock 10-day AI forecasts and real-time signals.
+                         <td colSpan={4} style={{textAlign: 'center', padding: '32px', color: 'var(--text-dim)', borderBottom: 'none', background: 'var(--bg-pannel-lighter)'}}>
+                            <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>🚀</span>
+                            <a href="/#pricing" style={{color: 'var(--brand-primary)', textDecoration: 'none', fontWeight: 'bold'}}>Unlock 10-day AI forecasts</a> and real-time signals with TrendMaster Pro.
                          </td>
                       </tr>
                     </tbody>
@@ -402,26 +407,26 @@ function SimpleDashboard() {
         {/* Right Sidebar */}
         <div className="sidebar">
           
-          <div className="widget">
-            <div className="upsell-banner">
-              <h3>Unlock AI Forecasts</h3>
-              <p>Get access to our Deep Learning Transformer Models, exact entry/exit targets, and Live WebSocket feeds.</p>
-              <button className="upgrade-btn" onClick={() => window.location.href='/#pricing'}>
+          <div className="widget" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="upsell-banner" style={{ background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-accent) 100%)', padding: '24px' }}>
+              <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>Master the Markets</h3>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem', marginBottom: '20px' }}>Get access to our Deep Learning Transformer Models and exact entry/exit targets.</p>
+              <button className="upgrade-btn" onClick={() => window.location.href='/#pricing'} style={{ width: '100%', padding: '12px', background: '#fff', color: 'var(--brand-primary)', border: 'none', borderRadius: 'var(--radius-sm)', fontWeight: 800, cursor: 'pointer' }}>
                 Upgrade to Pro
               </button>
             </div>
           </div>
 
           <div className="widget">
-            <div className="widget-title">Market Overview</div>
+            <div className="widget-title" style={{ fontFamily: 'Outfit', letterSpacing: '1px' }}>Market Overview</div>
             <div className="indices-list">
               {marketIndices.length > 0 ? marketIndices.map(idx => (
                 <div className="index-row" key={idx.name}>
-                  <span className="index-name">{idx.name}</span>
+                  <span className="index-name" style={{ fontWeight: 600 }}>{idx.name}</span>
                   <div className="index-values">
-                    <span className="index-price">{idx.price.toLocaleString('en-IN')}</span>
+                    <span className="index-price" style={{ fontFamily: 'JetBrains Mono' }}>{idx.price.toLocaleString('en-IN')}</span>
                     <span className={`index-change ${idx.change_pct >= 0 ? 'up' : 'down'}`}>
-                      {idx.change_pct >= 0 ? '+' : ''}{idx.change_pct.toFixed(2)}%
+                      {idx.change_pct >= 0 ? '▲' : '▼'}{Math.abs(idx.change_pct).toFixed(2)}%
                     </span>
                   </div>
                 </div>
@@ -432,10 +437,10 @@ function SimpleDashboard() {
           </div>
           
           <div className="widget">
-            <div className="widget-title">Recent History</div>
+            <div className="widget-title" style={{ fontFamily: 'Outfit', letterSpacing: '1px' }}>Recent History</div>
             <div className="recent-list">
               {recentStocks.length > 0 ? recentStocks.map(s => (
-                <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)} style={{ background: 'var(--bg-pannel)', border: '1px solid var(--glass-border)' }}>
                   {s.symbol}
                 </div>
               )) : (

@@ -12,7 +12,7 @@ const Footer: React.FC<FooterProps> = ({ isPro, wsStatus }) => {
         <div className="footer-grid">
           <div className="footer-section brand-section">
             <div className="footer-logo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
               </svg>
               TrendMaster <span>{isPro ? 'PRO' : 'FREE'}</span>

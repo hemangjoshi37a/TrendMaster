@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap');
 
 .tv-landing {
   width: 100%;
   min-height: 100vh;
-  background-color: #131722; /* TradingView Dark Mode base */
-  color: #d1d4dc; /* TV Off-white text */
+  background-color: var(--bg-obsidian);
+  color: var(--text-main);
   font-family: 'Inter', -apple-system, sans-serif;
   overflow-x: hidden;
   position: relative;
@@ -18,27 +18,26 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  /* Dark overlay so the orbs aren't too bright */
-  background: #131722;
+  background: var(--bg-obsidian);
 }
 
 .ai-orb {
   position: absolute;
   border-radius: 50%;
   filter: blur(120px);
-  opacity: 0.25;
+  opacity: 0.2;
   animation: floatOrb 25s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ai-orb-1 {
   width: 700px; height: 700px;
-  background: #2962FF;
+  background: var(--brand-primary);
   top: -20%; left: -10%;
 }
 
 .ai-orb-2 {
   width: 600px; height: 600px;
-  background: #089981;
+  background: var(--brand-accent);
   bottom: 0%; right: -10%;
   animation-duration: 35s;
   animation-delay: -5s;
@@ -46,11 +45,11 @@
 
 .ai-orb-3 {
   width: 800px; height: 800px;
-  background: #7B1FA2;
+  background: hsl(280, 67%, 38%);
   top: 30%; left: 40%;
   animation-duration: 40s;
   animation-delay: -15s;
-  opacity: 0.15;
+  opacity: 0.1;
 }
 
 @keyframes floatOrb {
@@ -72,11 +71,12 @@
   top: 0;
   left: 0;
   height: 3px;
-  background: #2962FF;
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-accent));
   width: 100%;
   transform-origin: 0% 50%;
   z-index: 10000;
   transition: transform 0.1s ease;
+  box-shadow: 0 0 10px var(--brand-primary-glow);
 }
 
 /* Navbar */
@@ -86,17 +86,19 @@
   left: 0;
   width: 100%;
   z-index: 100;
-  padding: 20px 0;
-  transition: all 0.3s ease;
+  padding: 24px 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
   border-bottom: 1px solid transparent;
 }
 
 .tv-navbar.scrolled {
-  background: #1e222d;
-  padding: 15px 0;
-  border-bottom: 1px solid #2a2e39;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  padding: 16px 0;
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
 }
 
 .tv-nav-container {
@@ -253,20 +255,21 @@
 }
 
 .hero-headline {
-  font-size: 5rem;
-  font-weight: 900;
-  line-height: 1.05;
+  font-family: 'Outfit', sans-serif;
+  font-size: 5.5rem;
+  font-weight: 800;
+  line-height: 1;
   margin-bottom: 24px;
-  color: #fff;
-  letter-spacing: -2px;
+  color: var(--text-bright);
+  letter-spacing: -0.04em;
 }
 
 .hero-highlight {
-  /* color: #2962FF; */
-  background: linear-gradient(90deg, #2962FF, #089981);
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-accent));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 30px var(--brand-primary-glow));
 }
 
 .hero-subline {

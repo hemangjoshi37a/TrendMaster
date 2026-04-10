@@ -1,60 +1,85 @@
-:root {
-  /* Core Colors - Bloomberg/TradingView deep aesthetics */
-  --bg-dark: #0B0E14; /* Deep Navy/Charcoal */
-  --bg-panel: #131722;
-  --bg-elevated: #1E222D;
-  
-  /* Accents & Brand */
-  --accent: #2962FF; /* Electric Blue */
-  --accent-soft: rgba(41, 98, 255, 0.15);
-  --accent-hover: #1E53E5;
-  --accent-glow: rgba(41, 98, 255, 0.4);
-  
-  /* Text */
-  --text-main: #D1D4DC;
-  --text-bright: #FFFFFF;
-  --text-muted: #787B86;
-  --text-dark: #434651;
-  
-  /* Semantic */
-  --success: #089981; /* TradingView Green */
-  --success-bg: rgba(8, 153, 129, 0.12);
-  --error: #F23645; /* TradingView Red */
-  --error-bg: rgba(242, 54, 69, 0.12);
-  --warning: #FF9800;
-  
-  /* Borders & Effects */
-  --border: #2A2E39;
-  --border-light: rgba(255, 255, 255, 0.04);
-  --glass: rgba(19, 23, 34, 0.7);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.4);
-  
-  /* Radii */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+
+.App {
+  min-height: 100vh;
+  background-color: var(--bg-obsidian);
+  color: var(--text-main);
 }
 
-* {
-  box-sizing: border-box;
+.App.dark-theme {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Dashboard Layout Overhaul */
+.dashboard {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--spacing-lg);
+  align-items: flex-start;
+  flex: 1;
+}
+
+.main-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  animation: fadeIn 0.6s ease-out;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  animation: fadeIn 0.8s ease-out;
+  background-color: var(--bg-pannel);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  height: fit-content;
+  position: sticky;
+  top: 80px;
+}
+
+/* Panel Styling (Unified Glassmorphism) */
+.chart-panel, .table-panel, .widget {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chart-panel:hover, .table-panel:hover, .widget:hover {
+  border-color: var(--glass-border-bright);
+  box-shadow: var(--shadow-lg);
+}
+
+.pro-glow-panel {
+  border-color: var(--brand-primary-glow);
+  box-shadow: 0 0 20px rgba(41, 98, 255, 0.1);
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--bg-dark);
+  background-color: var(--bg-obsidian);
   color: var(--text-main);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
 }
 
 /* Base Typography */
 h1, h2, h3, h4 {
   margin: 0;
+  font-family: 'Outfit', sans-serif;
   color: var(--text-bright);
 }
 
@@ -62,7 +87,6 @@ h1, h2, h3, h4 {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  /* overflow: hidden; Removed to allow footer scrolling */
 }
 
 /* ==========================================================================
@@ -138,89 +162,100 @@ h1, h2, h3, h4 {
 .search-box {
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
 }
 
 .search-input-wrapper {
   display: flex;
   align-items: center;
-  background-color: var(--bg-dark);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  height: 36px;
-  transition: all 0.2s ease;
+  background: var(--bg-pannel);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  height: 44px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-input-wrapper:focus-within {
-  border-color: var(--accent);
-  background-color: var(--bg-elevated);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--brand-primary);
+  background-color: var(--bg-pannel-lighter);
+  box-shadow: 0 0 0 4px var(--brand-primary-glow);
+  transform: translateY(-1px);
 }
 
 .search-icon {
   color: var(--text-muted);
-  padding-left: 12px;
+  padding-left: 16px;
   display: flex;
+  opacity: 0.6;
 }
 
 .search-input-wrapper input {
   flex: 1;
   background: transparent;
   border: none;
-  padding: 0 12px;
+  padding: 0 16px;
   height: 100%;
   color: var(--text-bright);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   outline: none;
 }
 
 .search-input-wrapper input::placeholder {
-  color: var(--text-dark);
+  color: var(--text-dim);
 }
 
 .suggestions {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background-color: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-bright);
+  border-radius: var(--radius-lg);
   list-style: none;
-  padding: 4px;
+  padding: 8px;
   margin: 0;
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   z-index: 1001;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .suggestions li {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  transition: all 0.2s ease;
 }
 
 .suggestions li:hover {
-  background-color: var(--bg-elevated);
+  background-color: var(--bg-pannel-lighter);
+  transform: translateX(4px);
 }
 
 .suggestions .sym {
-  font-weight: 600;
-  color: var(--accent);
-  font-size: 0.85rem;
-  width: 80px;
+  font-weight: 700;
+  color: var(--brand-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  width: 90px;
+  letter-spacing: 0.5px;
 }
 
 .suggestions .nam {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.8;
 }
 
 /* ==========================================================================
@@ -1270,6 +1305,12 @@ h1, h2, h3, h4 {
   color: var(--text-bright);
   letter-spacing: 0.3px;
 }
+.asc-symbol {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.3px;
+}
 .asc-label {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -1548,9 +1589,9 @@ h1, h2, h3, h4 {
    Footer
    ========================================================================== */
 .footer {
-  background-color: var(--bg-panel);
-  border-top: 1px solid var(--border);
-  padding: 60px 0 30px;
+  background-color: var(--bg-pannel);
+  border-top: 1px solid var(--glass-border);
+  padding: 80px 0 40px;
   position: relative;
   overflow: hidden;
   margin-top: auto;
@@ -1558,8 +1599,8 @@ h1, h2, h3, h4 {
 }
 
 .pro-footer {
-  border-top: 1px solid rgba(240, 165, 0, 0.3);
-  background: linear-gradient(180deg, rgba(240, 165, 0, 0.02) 0%, var(--bg-panel) 100%);
+  border-top: 1px solid hsla(38, 92%, 50%, 0.3);
+  background: linear-gradient(180deg, hsla(38, 92%, 50%, 0.02) 0%, var(--bg-pannel) 100%);
 }
 
 .footer::before {
@@ -1569,12 +1610,12 @@ h1, h2, h3, h4 {
   left: 0;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background: linear-gradient(90deg, transparent, var(--brand-primary), transparent);
   opacity: 0.3;
 }
 
 .pro-footer::before {
-  background: linear-gradient(90deg, transparent, #F0A500, transparent);
+  background: linear-gradient(90deg, transparent, var(--warning), transparent);
   opacity: 0.5;
 }
 
@@ -1618,15 +1659,16 @@ h1, h2, h3, h4 {
 }
 
 .footer-section ul li a:hover {
-  color: var(--accent);
+  color: var(--brand-primary);
   padding-left: 4px;
 }
 
 .pro-footer .footer-section ul li a:hover {
-  color: #F0A500;
+  color: var(--warning);
 }
 
 .brand-section .footer-logo {
+  font-family: 'Outfit', sans-serif;
   font-weight: 800;
   font-size: 1.2rem;
   color: var(--text-bright);
@@ -1638,13 +1680,13 @@ h1, h2, h3, h4 {
 
 .brand-section .footer-logo span {
   font-size: 0.65rem;
-  background: var(--accent);
+  background: var(--brand-primary);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .pro-footer .brand-section .footer-logo span {
-  background: linear-gradient(90deg, #F0A500, #CF8E00);
+  background: linear-gradient(90deg, var(--warning), hsl(38, 92%, 40%));
 }
 
 .footer-desc {
