@@ -162,7 +162,7 @@ const LandingPage: React.FC = () => {
                 <path d="M0,250 C100,240 200,180 300,200 C400,220 500,100 600,150 C700,200 800,50 900,80 L1000,40" fill="none" stroke="#2962FF" strokeWidth="4" />
 
                 {/* AI Projection Line */}
-                <path d="M700,200 C800,50 900,80 L1000,40" fill="none" stroke="#089981" strokeWidth="4" strokeDasharray="10, 10" className="animated-dash" />
+                <path d="M700,200 C800,50 900,80 1000,40" fill="none" stroke="#089981" strokeWidth="4" strokeDasharray="10, 10" className="animated-dash" />
                 <circle cx="700" cy="200" r="6" fill="#089981">
                   <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
                 </circle>

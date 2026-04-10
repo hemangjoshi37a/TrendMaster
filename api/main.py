@@ -195,7 +195,6 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", s
     if vix > 15.0:
         # Volatility Shock: Add Gaussian noise to the input features
         # The higher the VIX, the more the 'chaos'
-        import numpy as np
         chaos_factor = (vix - 15.0) / 200.0  # Normalized factor
         
         # Perturb the last window of data that the Transformer uses

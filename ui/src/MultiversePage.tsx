@@ -4,6 +4,8 @@ import ErrorBoundary from './ErrorBoundary';
 import TopNav from './TopNav';
 import RiskLab from './components/RiskLab';
 import DeepScan from './components/DeepScan';
+import { useAccount } from './hooks/useAccount';
+import { ExpiryOverlay } from './components/Dashboard/ExpiryBanner';
 import './App.css'; 
 
 interface RiskStats {
@@ -40,6 +42,7 @@ interface MultiverseData {
 }
 
 const MultiversePage: React.FC = () => {
+  const { isPro, isExpired, daysRemaining } = useAccount();
   const [query, setQuery] = useState<string>('');
   const [data, setData] = useState<MultiverseData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -58,6 +61,7 @@ const MultiversePage: React.FC = () => {
   ];
 
   const fetchMultiverse = useCallback(async (symbol: string) => {
+    if (!isPro) return; // Guard fetch
     setLoading(true);
     setError(null);
     setScanResults(null); // Reset scan on new symbol
@@ -80,10 +84,10 @@ const MultiversePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isPro]);
 
   const runDeepScan = async () => {
-    if (!data?.symbol) return;
+    if (!data?.symbol || !isPro) return;
     setIsScanning(true);
     try {
       const resp = await fetch(`/api/multiverse/deep-scan?stock_symbol=${encodeURIComponent(data.symbol)}`);
@@ -102,9 +106,24 @@ const MultiversePage: React.FC = () => {
     if (query.trim()) fetchMultiverse(query.trim().toUpperCase());
   };
 
+  // If user is not Pro, show the paywall immediately as this is a Pro-only page
+  if (!isPro) {
+    return (
+        <div className="App dark-theme">
+            <TopNav activePage="multiverse" isPro={false} />
+            <ExpiryOverlay 
+                isPro={false} 
+                isExpired={true} 
+                daysRemaining={0} 
+                onUpgradeClick={() => window.location.href = '/dashboard'} 
+            />
+        </div>
+    );
+  }
+
   return (
     <div className="App dark-theme">
-      <TopNav activePage="multiverse" isPro={true} />
+      <TopNav activePage="multiverse" isPro={isPro} />
       
       <main className="dashboard">
         <div className="main-column" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>

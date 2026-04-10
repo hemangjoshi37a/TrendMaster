@@ -43,15 +43,12 @@ const TIMEFRAME_MAP: { label: string; period: TimeframePeriod }[] = [
 ];
 
 function ProDashboard() {
-  const [query, setQuery] = useState<string>('');
-  const [suggestions, setSuggestions] = useState<Company[]>([]);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [prevPrice, setPrevPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [recentStocks, setRecentStocks] = useState<RecentStock[]>([]);
-  const [marketOpen, setMarketOpen] = useState<boolean>(true);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframePeriod>('1y');
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
@@ -67,32 +64,6 @@ function ProDashboard() {
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef<number>(0);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('recentStocks');
-    if (saved) setRecentStocks(JSON.parse(saved));
-
-    const checkMarket = () => {
-      const now = new Date();
-      const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-      const day = istTime.getDay();
-      const hour = istTime.getHours();
-      const min = istTime.getMinutes();
-      const isWeekend = day === 0 || day === 6;
-      const isWorkingHours = (hour === 9 && min >= 15) || (hour > 9 && hour < 15) || (hour === 15 && min <= 30);
-      setMarketOpen(!isWeekend && isWorkingHours);
-    };
-    checkMarket();
-    const interval = setInterval(checkMarket, 60000);
-
-    fetchMarketOverview();
-    const marketInterval = setInterval(fetchMarketOverview, 60000);
-
-    return () => {
-      clearInterval(interval);
-      clearInterval(marketInterval);
-    };
-  }, []);
-
   const fetchMarketOverview = async () => {
     try {
       const res = await fetch('/api/market-overview');
@@ -106,31 +77,17 @@ function ProDashboard() {
   };
 
   useEffect(() => {
-    if (isSelecting.current) {
-      isSelecting.current = false;
-      return;
-    }
+    const saved = localStorage.getItem('recentStocks');
+    if (saved) setRecentStocks(JSON.parse(saved));
 
-    if (query.length > 1) {
-      const fetchSuggestions = async () => {
-        try {
-          const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setSuggestions(data);
-            setShowSuggestions(data.length > 0);
-          }
-        } catch (e) {
-          console.error("Search error", e);
-        }
-      };
-      const delayDebounceFn = setTimeout(fetchSuggestions, 300);
-      return () => clearTimeout(delayDebounceFn);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  }, [query]);
+    fetchMarketOverview();
+    const marketInterval = setInterval(fetchMarketOverview, 60000);
+
+    return () => {
+      clearInterval(marketInterval);
+    };
+  }, []);
+
 
   const connectWebSocket = useCallback((stockSymbol: string) => {
     if (ws.current) ws.current.close();
@@ -139,7 +96,10 @@ function ProDashboard() {
 
     const createConnection = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
+      let host = window.location.host;
+      if (host === 'localhost:3000') {
+        host = 'localhost:8000';
+      }
       const socket = new WebSocket(`${protocol}//${host}/ws/ticks/${stockSymbol.toUpperCase()}`);
 
       socket.onopen = () => {
@@ -213,26 +173,6 @@ function ProDashboard() {
     }
   }, [connectWebSocket]);
 
-  const handleManualSearch = () => {
-    if (query.trim()) {
-      const sym = query.trim().toUpperCase();
-      setCurrentSymbol(sym);
-      isSelecting.current = true;
-      setQuery(sym);
-      setSuggestions([]);
-      setShowSuggestions(false);
-      fetchPrediction(sym, selectedTimeframe);
-    }
-  };
-
-  const handleSelectCompany = (company: Company | RecentStock) => {
-    isSelecting.current = true;
-    setQuery(company.symbol);
-    setSuggestions([]);
-    setShowSuggestions(false);
-    setCurrentSymbol(company.symbol);
-    fetchPrediction(company.symbol, selectedTimeframe);
-  };
 
   const handleTimeframeChange = (period: TimeframePeriod) => {
     if (loading) return;
@@ -306,45 +246,6 @@ function ProDashboard() {
       <TopNav 
         activePage="markets" 
         isPro={true} 
-        searchElement={
-          <div className="search-box">
-            <div className="search-input-wrapper">
-              <div className="search-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
-                placeholder="Search markets, symbols (e.g. RELIANCE, TCS)..."
-                autoComplete="off"
-              />
-            </div>
-            {showSuggestions && (
-              <ul className="suggestions">
-                {suggestions.map((c) => (
-                  <li key={c.symbol} onClick={() => handleSelectCompany(c)}>
-                    <span className="sym">{c.symbol}</span>
-                    <span className="nam">{c.name}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        }
-        rightActions={
-          <div className="brand" style={{marginLeft: '16px'}}>
-            <div className={`market-status ${marketOpen ? 'open' : 'closed'}`}>
-              <span className="status-dot"></span>
-              {marketOpen ? 'NSE OPEN' : 'NSE CLOSED'}
-            </div>
-          </div>
-        }
       />
 
       {/* Main Dashboard Layout */}
@@ -433,7 +334,7 @@ function ProDashboard() {
                   {loading ? (
                     <div className="loader">
                       <div className="loader-spinner"></div>
-                      <p>Running Transformer Model on {query}...</p>
+                      <p>Running Transformer Model on {currentSymbol}...</p>
                     </div>
                   ) : error ? (
                     <>
@@ -471,7 +372,10 @@ function ProDashboard() {
                       
                       <div className="recent-list" style={{ marginTop: '24px', justifyContent: 'center' }}>
                         {recentStocks.slice(0, 5).map(s => (
-                          <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                          <div key={s.symbol} className="recent-chip" onClick={() => {
+                            setCurrentSymbol(s.symbol);
+                            fetchPrediction(s.symbol, selectedTimeframe);
+                          }}>
                             {s.symbol}
                           </div>
                         ))}
@@ -695,7 +599,10 @@ function ProDashboard() {
             <div className="widget-title">Recent History</div>
             <div className="recent-list">
               {recentStocks.length > 0 ? recentStocks.map(s => (
-                <div key={s.symbol} className="recent-chip" onClick={() => handleSelectCompany(s)}>
+                <div key={s.symbol} className="recent-chip" onClick={() => {
+                  setCurrentSymbol(s.symbol);
+                  fetchPrediction(s.symbol, selectedTimeframe);
+                }}>
                   {s.symbol}
                 </div>
               )) : (

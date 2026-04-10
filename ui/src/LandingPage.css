@@ -85,96 +85,132 @@
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 100;
-  padding: 24px 0;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  transition: background 0.4s ease, height 0.3s ease, box-shadow 0.3s ease;
   background: transparent;
   border-bottom: 1px solid transparent;
 }
 
 .tv-navbar.scrolled {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  padding: 16px 0;
-  border-bottom: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-md);
+  background: rgba(17, 19, 28, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  height: 64px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
 }
 
 .tv-nav-container {
+  width: 100%;
   max-width: 1300px;
   margin: 0 auto;
   padding: 0 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.tv-nav-logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  color: #fff;
-}
-
-.tv-nav-logo .logo-text {
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.tv-nav-links {
-  display: flex;
   gap: 32px;
 }
 
-.nav-item {
-  color: #d1d4dc;
-  font-weight: 500;
-  font-size: 0.95rem;
+/* ---- Logo ---- */
+.tv-nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
-  transition: color 0.2s;
+  color: #fff;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.tv-nav-logo svg {
+  color: #2962FF;
+  flex-shrink: 0;
+}
+
+.tv-nav-logo .logo-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ---- Center Links ---- */
+.tv-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-item {
+  color: rgba(255,255,255,0.65);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+  padding: 6px 14px;
+  border-radius: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .nav-item:hover {
   color: #fff;
+  background: rgba(255,255,255,0.07);
 }
 
+/* ---- Right Actions ---- */
 .tv-nav-actions {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .tv-btn-login {
   background: none;
-  border: none;
-  color: #d1d4dc;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.75);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 .tv-btn-login:hover {
   color: #fff;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.25);
 }
 
 .tv-btn-get-started {
-  background-color: #2962FF;
+  background: #2962FF;
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 10px 20px;
-  font-weight: 600;
-  font-size: 0.95rem;
+  padding: 9px 18px;
+  font-weight: 700;
+  font-size: 0.88rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(41, 98, 255, 0.35);
+  letter-spacing: 0.01em;
 }
 
 .tv-btn-get-started:hover {
-  background-color: #1E53E5;
+  background: #1E53E5;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(41, 98, 255, 0.5);
 }
 
 /* Ticker Tape */
@@ -184,17 +220,40 @@
   background: #131722;
   border-top: 1px solid #2a2e39;
   border-bottom: 1px solid #2a2e39;
-  padding: 10px 0;
-  margin-top: 80px; /* Offset for navbar */
+  height: 44px;
+  display: flex;
+  align-items: center;
+  margin-top: 80px; /* Offset for initial navbar height */
   position: relative;
+}
+
+.tv-ticker-wrap::before,
+.tv-ticker-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 120px;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tv-ticker-wrap::before {
+  left: 0;
+  background: linear-gradient(90deg, #131722 0%, transparent 100%);
+}
+
+.tv-ticker-wrap::after {
+  right: 0;
+  background: linear-gradient(270deg, #131722 0%, transparent 100%);
 }
 
 .tv-ticker {
   display: flex;
   width: max-content;
   animation: ticker 30s linear infinite;
-  gap: 40px;
-  padding: 0 20px;
+  gap: 48px;
+  padding: 0 40px;
 }
 
 @keyframes ticker {
