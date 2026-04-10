@@ -87,7 +87,10 @@ const PaperTrading: React.FC = () => {
     if (ws.current) ws.current.close();
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+    let host = window.location.host;
+    if (host === 'localhost:3000') {
+      host = 'localhost:8000';
+    }
     const socket = new WebSocket(`${protocol}//${host}/ws/ticks/${symbol.toUpperCase()}`);
 
     socket.onopen = () => console.log('WS Connected:', symbol);
@@ -344,21 +347,6 @@ const PaperTrading: React.FC = () => {
       <TopNav 
         activePage="paper-trading" 
         isPro={isPro} 
-        totalEquityOverride={totalEquity}
-        totalUnrealizedOverride={totalUnrealized}
-        searchElement={
-           <input 
-              type="text"
-              className="pt-search-input"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && loadSymbolData(searchInput)}
-              placeholder="Search ticker..."
-           />
-        }
-        rightActions={
-           <button onClick={() => navigate('/dashboard')} style={{background: 'transparent', color: '#848E9C', border:'none', cursor:'pointer', fontSize: '1rem', fontWeight: 700}}>×</button>
-        }
       />
 
       {/* Main Trading Workspace */}

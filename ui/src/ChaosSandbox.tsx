@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useAccount } from './hooks/useAccount';
+import { ExpiryOverlay } from './components/Dashboard/ExpiryBanner';
 import ChaosChart from './ChaosChart';
 import Footer from './Footer';
 import TopNav from './TopNav';
@@ -30,6 +31,7 @@ const SCENARIOS: Scenario[] = [
 ];
 
 const ChaosSandbox: React.FC = () => {
+  const { isPro, isExpired, daysRemaining } = useAccount();
   const [symbol, setSymbol] = useState('RELIANCE');
   const [shockPct, setShockPct] = useState(0); 
   const [vixShock, setVixShock] = useState(15); 
@@ -39,8 +41,6 @@ const ChaosSandbox: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [baseData, setBaseData] = useState<PredictionData | null>(null);
   const [shockData, setShockData] = useState<PredictionData | null>(null);
-  const location = useLocation();
-  const isPro = location.state?.isPro || false;
 
   // Track if a generic shock slider fetch is queued to debounce
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -128,6 +128,21 @@ const ChaosSandbox: React.FC = () => {
       // Clean up timeout
       return () => { if (typingTimeout) clearTimeout(typingTimeout); };
   }, [typingTimeout]);
+
+  if (!isPro) {
+    return (
+      <div className="chaos-lab-wrapper dark-theme">
+        <TopNav activePage="sandbox" isPro={false} />
+        <ExpiryOverlay 
+            isPro={false} 
+            isExpired={true} 
+            daysRemaining={0} 
+            onUpgradeClick={() => window.location.href = '/dashboard'} 
+        />
+        <Footer isPro={false} wsStatus="connected" />
+      </div>
+    );
+  }
 
   return (
     <div className="chaos-lab-wrapper dark-theme">
