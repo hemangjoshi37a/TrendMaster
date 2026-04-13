@@ -10,6 +10,7 @@ const LandingPage: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [authError, setAuthError] = useState('');
   const navigate = useNavigate();
 
@@ -34,29 +35,58 @@ const LandingPage: React.FC = () => {
     setShowAuthModal(true);
   };
 
-  // Static demo credentials
-  const DEMO_ACCOUNTS = [
-    { email: 'free@trendmaster.ai', password: 'free123', isPro: false },
-    { email: 'pro@trendmaster.ai', password: 'pro123', isPro: true },
-  ];
-
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email || !password || (authMode === 'signup' && !fullName)) {
       setAuthError('Please fill in all required fields.');
       return;
     }
 
-    if (authMode === 'signin') {
-      const match = DEMO_ACCOUNTS.find(a => a.email === email && a.password === password);
-      if (match) {
-        navigate('/dashboard', { state: { isPro: match.isPro } });
+    try {
+      if (authMode === 'signin') {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          setAuthError(err.detail || 'Invalid credentials.');
+          return;
+        }
+
+        const data = await res.json();
+        localStorage.setItem('tm_session', JSON.stringify({ userId: data.id, isPro: data.is_pro }));
+        localStorage.setItem('tm_account', JSON.stringify({ isPro: data.is_pro }));
+        navigate('/dashboard', { state: { isPro: data.is_pro } });
+
       } else {
-        setAuthError('Invalid credentials. Use free@trendmaster.ai / free123 or pro@trendmaster.ai / pro123');
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+             email, password, full_name: fullName, is_pro: selectedPlan === 'pro', username: email.split('@')[0]
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          setAuthError(err.detail || 'Sign up failed.');
+          return;
+        }
+
+        const data = await res.json();
+        localStorage.setItem('tm_session', JSON.stringify({ userId: data.id, isPro: data.is_pro }));
+        localStorage.setItem('tm_account', JSON.stringify({ isPro: data.is_pro }));
+
+        if (selectedPlan === 'pro') {
+          alert('Pro Plan Selected: Payment Gateway will be integrated here later. Proceeding to Dashboard...');
+        }
+        navigate('/dashboard', { state: { isPro: selectedPlan === 'pro' } });
       }
-    } else {
-      // Sign-up: trust the plan the user chose on the page
-      navigate('/dashboard', { state: { isPro: selectedPlan === 'pro' } });
+    } catch (err) {
+      setAuthError('Network error connecting to API');
     }
   };
 
@@ -109,7 +139,7 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="tv-nav-actions">
             <button className="tv-btn-login" onClick={() => openAuth('signin')}>Log In</button>
-            <button className="tv-btn-get-started" onClick={() => openAuth('signup', 'pro')}>Subscribe to Pro</button>
+            <button className="tv-btn-get-started" onClick={() => openAuth('signup', 'basic')}>Get Started</button>
           </div>
         </div>
       </nav>
@@ -478,25 +508,54 @@ const LandingPage: React.FC = () => {
             </div>
 
             <h2 className="auth-heading">{authMode === 'signin' ? 'Welcome Back' : 'Create Account'}</h2>
-            {selectedPlan === 'pro' && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                <span style={{ background: 'linear-gradient(90deg,#2962FF,#089981)', color: '#fff', padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>⚡ Pro Plan Selected</span>
-              </div>
-            )}
+            
             <p className="auth-subheading" style={{ marginBottom: '24px' }}>
               {authMode === 'signin'
                 ? 'Enter your details to access the AI dashboard.'
-                : 'Sign up to start AI-powered trading predictions.'}
+                : 'Select your tier and sign up for AI-powered predictions.'}
             </p>
 
             <form onSubmit={handleAuthSubmit} className="auth-form">
+              {authError && <div style={{ color: '#f23645', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center', background: 'rgba(242, 54, 69, 0.1)', padding: '8px', borderRadius: '4px' }}>{authError}</div>}
+              
               {authMode === 'signup' && (
-                <div className="input-group">
-                  <label>Full Name</label>
-                  <input type="text" placeholder="John Doe" required />
-                </div>
+                <>
+                  <div className="input-group">
+                    <label>Full Name</label>
+                    <input type="text" placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} required />
+                  </div>
+                  
+                  <div className="input-group" style={{marginBottom: '16px'}}>
+                    <label>Select Plan</label>
+                    <div style={{display: 'flex', gap: '12px', marginTop: '6px'}}>
+                      <div 
+                        onClick={() => setSelectedPlan('basic')}
+                        style={{
+                          flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                          border: selectedPlan === 'basic' ? '2px solid #2962FF' : '1px solid #2B3139',
+                          background: selectedPlan === 'basic' ? 'rgba(41, 98, 255, 0.05)' : 'transparent'
+                        }}>
+                        <div style={{fontWeight: 'bold', color: '#fff', marginBottom: '2px'}}>Basic</div>
+                        <div style={{fontSize: '0.75rem', color: '#848E9C'}}>Free forever</div>
+                      </div>
+                      
+                      <div 
+                        onClick={() => setSelectedPlan('pro')}
+                        style={{
+                          flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                          border: selectedPlan === 'pro' ? '2px solid #089981' : '1px solid #2B3139',
+                          background: selectedPlan === 'pro' ? 'rgba(8, 153, 129, 0.05)' : 'transparent'
+                        }}>
+                        <div style={{fontWeight: 'bold', color: '#fff', marginBottom: '2px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px'}}>
+                          <span>Pro Terminal</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FCD535" strokeWidth="3"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path></svg>
+                        </div>
+                        <div style={{fontSize: '0.75rem', color: '#848E9C'}}>$49 / month</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
-              {authError && <div style={{ color: '#f23645', fontSize: '0.85rem', marginBottom: '8px', textAlign: 'center', background: 'rgba(242, 54, 69, 0.1)', padding: '8px', borderRadius: '4px' }}>{authError}</div>}
               <div className="input-group">
                 <label>Email Address</label>
                 <input type="email" placeholder="trade@trendmaster.ai" value={email} onChange={e => setEmail(e.target.value)} required />

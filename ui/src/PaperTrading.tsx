@@ -46,11 +46,45 @@ const PaperTrading: React.FC = () => {
   const navigate = useNavigate();
   const isPro = location.state?.isPro || false;
 
-  const [state, setState] = useState<PaperTradingState>(() => {
-    const saved = localStorage.getItem('tm_paper_trading_v2');
-    if (saved) return JSON.parse(saved);
-    return { cash: DEFAULT_CASH, positions: [], history: [], equityHistory: [] };
-  });
+  const [state, setState] = useState<PaperTradingState>({ cash: DEFAULT_CASH, positions: [], history: [], equityHistory: [] });
+
+  const fetchPortfolioState = async () => {
+    try {
+      const sessionStr = localStorage.getItem('tm_session');
+      if (!sessionStr) return;
+      const session = JSON.parse(sessionStr);
+
+      const res = await fetch('/api/user', {
+        headers: { 'X-User-Id': session.userId.toString() }
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setState(prev => ({
+          ...prev, // preserve equity history
+          cash: user.cash_balance,
+          positions: user.positions.map((p: any) => ({
+            symbol: p.symbol,
+            qty: p.quantity,
+            avgPrice: p.average_price,
+            takeProfit: p.take_profit,
+            stopLoss: p.stop_loss
+          })),
+          history: user.transactions.map((t: any) => ({
+            id: t.id,
+            symbol: t.symbol,
+            type: t.type,
+            qty: t.quantity,
+            price: t.price,
+            date: t.timestamp
+          }))
+        }));
+      }
+    } catch(e) { console.error("Failed to load DB state", e); }
+  };
+
+  useEffect(() => {
+    fetchPortfolioState();
+  }, []);
 
   const [livePrices, setLivePrices] = useState<{ [symbol: string]: number }>({});
   
@@ -74,9 +108,7 @@ const PaperTrading: React.FC = () => {
   const [liveQuote, setLiveQuote] = useState<number | null>(null);
   const [prevQuote, setPrevQuote] = useState<number | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem('tm_paper_trading_v2', JSON.stringify(state));
-  }, [state]);
+  // Removed localStorage saves since we are using Database
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -208,100 +240,93 @@ const PaperTrading: React.FC = () => {
       }
 
       if (triggered) {
-        setState(prev => {
-          // Double check if it still exists
-          const pIndex = prev.positions.findIndex(p => p.symbol === pos.symbol);
-          if (pIndex === -1) return prev;
-          
-          const p = prev.positions[pIndex];
-          const newCash = prev.cash + (p.qty * currentPrice);
-          const newPositions = [...prev.positions];
-          newPositions.splice(pIndex, 1);
-          
-          const tx: Transaction = {
-            id: Math.random().toString(36).substr(2, 9),
-            symbol: p.symbol,
-            type: 'SELL',
-            qty: p.qty,
-            price: currentPrice,
-            date: new Date().toISOString()
-          };
-
-          setTimeout(() => showToast(`${reason}: Auto-sold ${p.qty} ${p.symbol} at ₹${currentPrice.toFixed(2)}`, 'success'), 100);
-          return { ...prev, cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
-        });
+        const triggerAutoTrade = async () => {
+          try {
+            const sessionStr = localStorage.getItem('tm_session');
+            const session = sessionStr ? JSON.parse(sessionStr) : null;
+            if (!session) return;
+            
+            const resp = await fetch('/api/portfolio/trade', {
+              method: 'POST',
+              headers: { 
+                 'Content-Type': 'application/json',
+                 'X-User-Id': session.userId.toString()
+              },
+              body: JSON.stringify({ symbol: pos.symbol, price: currentPrice, quantity: pos.qty, type: 'SELL' })
+            });
+            if (resp.ok) {
+              showToast(`${reason}: Auto-sold ${pos.qty} ${pos.symbol} at ₹${currentPrice.toFixed(2)}`, 'success');
+              fetchPortfolioState();
+            }
+          } catch(e) { console.error(e); }
+        };
+        triggerAutoTrade();
       }
     });
   }, [liveQuote, livePrices, activeSymbol, state.positions]);
 
-  const executeTrade = () => {
+  const executeTrade = async () => {
     const currentPrice = liveQuote || (prediction ? prediction.prices[prediction.prediction_start_index - 1] : 0);
     if (!currentPrice || !orderQty || orderQty <= 0) return;
     
     const qty = Number(orderQty);
-    const cost = qty * currentPrice;
+    let tpVal = takeProfit ? Number(takeProfit) : undefined;
+    let slVal = stopLoss ? Number(stopLoss) : undefined;
 
-    setState(prev => {
-      let newCash = prev.cash;
-      let newPositions = [...prev.positions];
-      
-      const posIndex = newPositions.findIndex(p => p.symbol === activeSymbol);
-      const pos = posIndex >= 0 ? newPositions[posIndex] : null;
-
-      let tpVal = takeProfit ? Number(takeProfit) : undefined;
-      let slVal = stopLoss ? Number(stopLoss) : undefined;
-
-      if (orderSide === 'BUY') {
-        if (tpVal !== undefined && tpVal <= currentPrice) {
-          setTimeout(() => showToast("Take Profit must be > entry price!", 'error'), 0);
-          return prev;
-        }
-        if (slVal !== undefined && slVal >= currentPrice) {
-          setTimeout(() => showToast("Stop Loss must be < entry price!", 'error'), 0);
-          return prev;
-        }
-        if (cost > newCash) {
-          setTimeout(() => showToast("Insufficient Buying Power!", 'error'), 0);
-          return prev;
-        }
-        newCash -= cost;
-        if (pos) {
-          const totalCost = (pos.qty * pos.avgPrice) + cost;
-          pos.qty += qty;
-          pos.avgPrice = totalCost / pos.qty;
-          if (tpVal !== undefined) pos.takeProfit = tpVal;
-          if (slVal !== undefined) pos.stopLoss = slVal;
-        } else {
-          newPositions.push({ symbol: activeSymbol, qty, avgPrice: currentPrice, takeProfit: tpVal, stopLoss: slVal });
-        }
-        setTimeout(() => showToast(`Market BUY ${qty} ${activeSymbol} Executed`, 'success'), 0);
-      } else {
-        if (!pos || pos.qty < qty) {
-          setTimeout(() => showToast("Insufficient Shares to Sell!", 'error'), 0);
-          return prev;
-        }
-        newCash += cost;
-        pos.qty -= qty;
-        if (pos.qty === 0) {
-          newPositions.splice(posIndex, 1);
-        }
-        setTimeout(() => showToast(`Market SELL ${qty} ${activeSymbol} Executed`, 'success'), 0);
+    if (orderSide === 'BUY') {
+      if (tpVal !== undefined && tpVal <= currentPrice) {
+        showToast("Take Profit must be > entry price!", 'error');
+        return;
       }
+      if (slVal !== undefined && slVal >= currentPrice) {
+        showToast("Stop Loss must be < entry price!", 'error');
+        return;
+      }
+      if (qty * currentPrice > state.cash) {
+        showToast("Insufficient Buying Power!", 'error');
+        return;
+      }
+    } else {
+      const pos = state.positions.find(p => p.symbol === activeSymbol);
+      if (!pos || pos.qty < qty) {
+        showToast("Insufficient Shares to Sell!", 'error');
+        return;
+      }
+    }
 
-      const tx: Transaction = {
-        id: Math.random().toString(36).substr(2, 9),
-        symbol: activeSymbol,
-        type: orderSide,
-        qty,
-        price: currentPrice,
-        date: new Date().toISOString()
-      };
+    try {
+      const sessionStr = localStorage.getItem('tm_session');
+      if (!sessionStr) return;
+      const session = JSON.parse(sessionStr);
 
-      setOrderQty('');
-      setTakeProfit('');
-      setStopLoss('');
-      return { ...prev, cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
-    });
+      const resp = await fetch('/api/portfolio/trade', {
+        method: 'POST',
+        headers: { 
+           'Content-Type': 'application/json',
+           'X-User-Id': session.userId.toString()
+        },
+        body: JSON.stringify({ 
+          symbol: activeSymbol, 
+          price: currentPrice, 
+          quantity: qty, 
+          type: orderSide,
+          take_profit: tpVal,
+          stop_loss: slVal
+        })
+      });
+      
+      if (resp.ok) {
+        showToast(`Market ${orderSide} ${qty} ${activeSymbol} Executed`, 'success');
+        setOrderQty('');
+        setTakeProfit('');
+        setStopLoss('');
+        fetchPortfolioState();
+      } else {
+        showToast(`Trade Failed`, 'error');
+      }
+    } catch(e) {
+      showToast(`Network Error`, 'error');
+    }
   };
 
   // Calculations
