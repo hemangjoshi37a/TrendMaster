@@ -8,74 +8,7 @@
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
-/* --- Top Navigation --- */
-.pt-pro-nav {
-  height: 64px;
-  background-color: var(--bg-pannel);
-  border-bottom: 1px solid var(--glass-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  flex-shrink: 0;
-  backdrop-filter: var(--glass-blur);
-}
-
-.pt-nav-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.pt-brand {
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--text-bright);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  letter-spacing: -0.02em;
-}
-.pt-brand span {
-  color: var(--brand-primary);
-}
-
-.pt-nav-links {
-  display: flex;
-  gap: 16px;
-}
-.pt-nav-links a {
-  text-decoration: none;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-.pt-nav-links a:hover, .pt-nav-links a.active {
-  color: var(--text-bright);
-  text-shadow: 0 0 10px var(--brand-primary-glow);
-}
-
-.pt-nav-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.pt-account-chip {
-  background: var(--brand-primary-glow);
-  border: 1px solid var(--glass-border-bright);
-  padding: 8px 16px;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  color: var(--text-bright);
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: var(--shadow-sm);
-}
+/* Navbar styles are now in TopNav.css */
 
 /* --- Main Workspace --- */
 .pt-pro-workspace {

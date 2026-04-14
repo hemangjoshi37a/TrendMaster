@@ -1,5 +1,6 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import pandas as pd
 import numpy as np
 import json
@@ -13,6 +14,14 @@ import yfinance as yf
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
+
+# Database Integration
+from sqlalchemy.orm import Session
+from api.database import models, schemas, crud
+from api.database.database import engine, get_db
+
+# Create DB Tables
+models.Base.metadata.create_all(bind=engine)
 
 # Import from our library
 from trendmaster.trendmaster import TransAm, PositionalEncoding, Inferencer, DataLoader
@@ -195,7 +204,6 @@ def get_real_prediction(symbol, input_window=30, future_steps=10, period="1y", s
     if vix > 15.0:
         # Volatility Shock: Add Gaussian noise to the input features
         # The higher the VIX, the more the 'chaos'
-        import numpy as np
         chaos_factor = (vix - 15.0) / 200.0  # Normalized factor
         
         # Perturb the last window of data that the Transformer uses
@@ -1046,6 +1054,77 @@ def get_live_quote(symbol: str):
         raise HTTPException(status_code=404, detail=f"Failed to fetch quote for {symbol_upper}")
 
 
+# --- Database Endpoints ---
+
+def get_current_user_id(x_user_id: str = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Authentication credentials (X-User-Id) were not provided.")
+    try:
+        return int(x_user_id)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token format.")
+
+@app.post("/api/auth/register", response_model=schemas.User)
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    existing = crud.get_user_by_email(db, user.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return crud.create_user(db, user)
+
+@app.post("/api/auth/login", response_model=schemas.User)
+def login_user(creds: schemas.LoginRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, creds.email)
+    if not user or user.password_hash != crud.hash_password(creds.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return user
+
+@app.get("/api/user", response_model=schemas.User)
+def get_user_profile(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.get("/api/portfolio", response_model=List[schemas.Position])
+def fetch_portfolio(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return crud.get_portfolio(db, user.id)
+
+@app.post("/api/portfolio/trade", response_model=schemas.User)
+def execute_trade_endpoint(trade: dict, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    symbol = trade.get("symbol")
+    price = trade.get("price")
+    quantity = trade.get("quantity")
+    trade_type = trade.get("type")
+    
+    if not all([symbol, price, quantity, trade_type]):
+        raise HTTPException(status_code=400, detail="Missing trade parameters")
+        
+    updated_user = crud.execute_trade(
+        db, user.id, symbol, float(price), int(quantity), trade_type, 
+        take_profit=trade.get("take_profit"), stop_loss=trade.get("stop_loss")
+    )
+    return updated_user
+
+@app.post("/api/portfolio/limits")
+def update_position_limits(limits: dict, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = crud.get_user(db, user_id)
+    if not user: raise HTTPException(status_code=404, detail="User not found")
+    
+    symbol = limits.get("symbol")
+    take_profit = limits.get("take_profit")
+    stop_loss = limits.get("stop_loss")
+    
+    pos = crud.update_limits(db, user.id, symbol, take_profit, stop_loss)
+    if not pos: raise HTTPException(status_code=404, detail="Position not found")
+    return {"status": "success"}
+
 @app.websocket("/ws/ticks/{symbol}")
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
     await manager.connect(websocket, symbol.upper())
@@ -1053,6 +1132,7 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
         while True: await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket, symbol.upper())
+
 
 if __name__ == "__main__":
     import uvicorn

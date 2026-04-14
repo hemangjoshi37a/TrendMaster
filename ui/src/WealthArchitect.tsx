@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import TopNav from './TopNav';
 import Footer from './Footer';
+import { useAccount } from './hooks/useAccount';
+import { ExpiryOverlay } from './components/Dashboard/ExpiryBanner';
 import './WealthArchitect.css';
 
 interface StockRec {
@@ -37,9 +39,8 @@ const HORIZONS = [
 ];
 
 const WealthArchitect: React.FC = () => {
-  const location = useLocation();
+  const { isPro, isExpired, daysRemaining } = useAccount();
   const navigate = useNavigate();
-  const isPro = location.state?.isPro || false;
 
   const [budget, setBudget] = useState<string>('50000');
   const [sector, setSector] = useState<string>('All');
@@ -77,22 +78,13 @@ const WealthArchitect: React.FC = () => {
   if (!isPro) {
     return (
       <div className="wealth-advisor-wrapper">
-        <TopNav activePage="markets" isPro={false} />
-        <div className="advisor-pro-locked">
-           <div className="lock-icon-lg">🔐</div>
-           <h1>AI Wealth Architect</h1>
-           <p style={{color: 'var(--text-muted)', maxWidth: '500px', margin: '20px auto 40px'}}>
-             This premium intelligence engine is reserved for Pro members only. 
-             Upgrade for personalized stock picking and portfolio allocation.
-           </p>
-           <button 
-             className="run-analysis-btn" 
-             style={{margin: '0 auto'}}
-             onClick={() => navigate('/dashboard', { state: { isPro: false } })}
-           >
-             Back to Dashboard
-           </button>
-        </div>
+        <TopNav activePage="wealth-architect" isPro={false} />
+        <ExpiryOverlay 
+            isPro={false} 
+            isExpired={true} 
+            daysRemaining={0} 
+            onUpgradeClick={() => window.location.href = '/dashboard'} 
+        />
         <Footer isPro={false} wsStatus="disconnected" />
       </div>
     );
@@ -100,7 +92,7 @@ const WealthArchitect: React.FC = () => {
 
   return (
     <div className="wealth-advisor-wrapper">
-      <TopNav activePage="markets" isPro={true} />
+      <TopNav activePage="wealth-architect" isPro={true} />
       
       <div className="advisor-container">
         <div className="advisor-header">

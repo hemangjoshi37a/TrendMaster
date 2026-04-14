@@ -35,11 +35,47 @@ const Portfolio: React.FC = () => {
   const navigate = useNavigate();
   const isPro = location.state?.isPro || false;
 
-  const [state, setState] = useState<PaperTradingState>(() => {
-    const saved = localStorage.getItem('tm_paper_trading');
-    if (saved) return JSON.parse(saved);
-    return { cash: DEFAULT_CASH, positions: [], history: [] };
-  });
+  const [state, setState] = useState<PaperTradingState>({ cash: DEFAULT_CASH, positions: [], history: [] });
+  const [loading, setLoading] = useState(true);
+
+  // Fetch initial state from DB
+  const fetchPortfolioState = async () => {
+    try {
+      const sessionStr = localStorage.getItem('tm_session');
+      if (!sessionStr) return;
+      const session = JSON.parse(sessionStr);
+
+      const res = await fetch('/api/user', {
+         headers: { 'X-User-Id': session.userId.toString() }
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setState({
+          cash: user.cash_balance,
+          positions: user.positions.map((p: any) => ({
+            symbol: p.symbol,
+            qty: p.quantity,
+            avgPrice: p.average_price,
+            takeProfit: p.take_profit,
+            stopLoss: p.stop_loss
+          })),
+          history: user.transactions.map((t: any) => ({
+            id: t.id,
+            symbol: t.symbol,
+            type: t.type,
+            qty: t.quantity,
+            price: t.price,
+            date: t.timestamp
+          }))
+        });
+      }
+    } catch(e) { console.error("Failed to load portfolio from DB", e); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    fetchPortfolioState();
+  }, []);
 
   const [livePrices, setLivePrices] = useState<{ [symbol: string]: number }>({});
   const [toast, setToast] = useState<{msg: string, type: 'success'|'error'} | null>(null);
@@ -49,9 +85,7 @@ const Portfolio: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  useEffect(() => {
-    localStorage.setItem('tm_paper_trading', JSON.stringify(state));
-  }, [state]);
+  // Removed localStorage sync for state as we use the database
 
   useEffect(() => {
     localStorage.setItem('tm_equity_history', JSON.stringify(equityHistory));
@@ -123,57 +157,57 @@ const Portfolio: React.FC = () => {
       }
 
       if (triggered) {
-        setState(prev => {
-          const pIndex = prev.positions.findIndex(p => p.symbol === pos.symbol);
-          if (pIndex === -1) return prev;
-          
-          const p = prev.positions[pIndex];
-          const newCash = prev.cash + (p.qty * currentPrice);
-          const newPositions = [...prev.positions];
-          newPositions.splice(pIndex, 1);
-          
-          const tx: Transaction = {
-            id: Math.random().toString(36).substr(2, 9),
-            symbol: p.symbol,
-            type: 'SELL',
-            qty: p.qty,
-            price: currentPrice,
-            date: new Date().toISOString()
-          };
-
-          setTimeout(() => showToast(`${reason}: Auto-sold ${p.qty} ${p.symbol} at ₹${currentPrice.toFixed(2)}`, 'success'), 100);
-          return { cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
-        });
+        const executeAutoTrade = async () => {
+          try {
+            const sessionStr = localStorage.getItem('tm_session');
+            const session = sessionStr ? JSON.parse(sessionStr) : null;
+            if (!session) return;
+            
+            const resp = await fetch('/api/portfolio/trade', {
+              method: 'POST',
+              headers: { 
+                 'Content-Type': 'application/json',
+                 'X-User-Id': session.userId.toString()
+              },
+              body: JSON.stringify({ symbol: pos.symbol, price: currentPrice, quantity: pos.qty, type: 'SELL' })
+            });
+            if (resp.ok) {
+              showToast(`${reason}: Auto-sold ${pos.qty} ${pos.symbol} at ₹${currentPrice.toFixed(2)}`, 'success');
+              fetchPortfolioState();
+            }
+          } catch(e) { console.error("Auto execute error", e); }
+        };
+        executeAutoTrade();
       }
     });
   }, [livePrices, state.positions]);
 
-  const handleSellAll = (symbol: string, currentPrice: number) => {
-    setState(prev => {
-      let newCash = prev.cash;
-      let newPositions = [...prev.positions];
-      
-      const posIndex = newPositions.findIndex(p => p.symbol === symbol);
-      if (posIndex === -1) return prev;
-      
-      const pos = newPositions[posIndex];
-      const cost = pos.qty * currentPrice;
-      
-      newCash += cost;
-      newPositions.splice(posIndex, 1);
-      
-      const tx: Transaction = {
-        id: Math.random().toString(36).substr(2, 9),
-        symbol: symbol,
-        type: 'SELL',
-        qty: pos.qty,
-        price: currentPrice,
-        date: new Date().toISOString()
-      };
+  const handleSellAll = async (symbol: string, currentPrice: number) => {
+    const pos = state.positions.find(p => p.symbol === symbol);
+    if (!pos) return;
+    
+    try {
+      const sessionStr = localStorage.getItem('tm_session');
+      if (!sessionStr) return;
+      const session = JSON.parse(sessionStr);
 
-      showToast(`Instant Market SELL: ${pos.qty} ${symbol} Executed`, 'success');
-      return { cash: newCash, positions: newPositions, history: [tx, ...prev.history].slice(0, 100) };
-    });
+      const resp = await fetch('/api/portfolio/trade', {
+        method: 'POST',
+        headers: { 
+           'Content-Type': 'application/json',
+           'X-User-Id': session.userId.toString()
+        },
+        body: JSON.stringify({ symbol: symbol, price: currentPrice, quantity: pos.qty, type: 'SELL' })
+      });
+      if (resp.ok) {
+        showToast(`Instant Market SELL: ${pos.qty} ${symbol} Executed`, 'success');
+        fetchPortfolioState();
+      } else {
+        showToast(`Sell Order Failed`, 'error');
+      }
+    } catch(e) {
+      showToast(`Network Error`, 'error');
+    }
   };
 
   return (

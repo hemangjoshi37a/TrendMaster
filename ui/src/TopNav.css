@@ -1,0 +1,399 @@
+/* =================================================================
+   TrendMaster — Global Top Navigation
+   Professional 3-Column Layout:
+   [Logo + Divider + Nav Links] | [Search] | [Equity + Status + Logout]
+   ================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
+/* ── Nav Shell ── */
+.tn-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 60px;
+  background: var(--bg-pannel);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 var(--glass-border), 0 4px 24px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+/* ── Container: full-width flex row ── */
+.tn-container {
+  width: 100%;
+  height: 100%;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ================================================================
+   LEFT SECTION — Brand + Vertical Divider + Nav Links
+   ================================================================ */
+.tn-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+/* Brand / Logo */
+.tn-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text-bright);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.15s ease;
+}
+
+.tn-brand:hover { opacity: 0.85; }
+
+.tn-brand-icon {
+  color: var(--brand-primary);
+  flex-shrink: 0;
+}
+
+.tn-brand-name {
+  color: var(--text-bright);
+}
+
+.tn-pro-badge {
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Vertical divider between brand and links */
+.tn-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--glass-border-bright);
+  margin: 0 20px;
+  flex-shrink: 0;
+}
+
+/* Nav Links row */
+.tn-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tn-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  position: relative;
+  transition: color 0.15s ease, background 0.15s ease;
+  letter-spacing: 0.01em;
+}
+
+.tn-link:hover {
+  color: var(--text-bright);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Active state — highlighted pill + brand underline */
+.tn-link--active {
+  color: var(--text-bright);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.tn-link--active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--brand-primary);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px var(--brand-primary-glow);
+}
+
+/* ================================================================
+   CENTER SECTION — Search Bar
+   ================================================================ */
+.tn-center {
+  flex: 1;
+  max-width: 360px;
+  min-width: 120px;
+  position: relative;
+}
+
+.tn-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-obsidian);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  height: 34px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tn-search:focus-within {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-primary-glow);
+}
+
+.tn-search-icon {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.tn-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-bright);
+  font-size: 0.8rem;
+  font-family: 'Inter', -apple-system, sans-serif;
+  caret-color: var(--brand-primary);
+  min-width: 0;
+}
+
+.tn-search input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.tn-search-clear {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+.tn-search-clear:hover { opacity: 1; color: var(--text-muted); }
+
+/* Suggestions dropdown */
+.tn-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg-pannel);
+  border: 1px solid var(--glass-border-bright);
+  border-radius: var(--radius-md);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  z-index: 2000;
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.tn-suggestions li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.tn-suggestions li:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tn-sym {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  min-width: 64px;
+  flex-shrink: 0;
+}
+
+.tn-name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================================
+   RIGHT SECTION — Equity Chip + Market Status + Logout
+   ================================================================ */
+.tn-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Equity / PnL chip */
+.tn-equity-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-pannel-lighter);
+  border: 1px solid var(--glass-border-bright);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  height: 36px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tn-chip-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.25;
+}
+
+.tn-chip-label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.tn-chip-val {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+.tn-chip-val.pos { color: var(--success); }
+.tn-chip-val.neg { color: var(--error); }
+
+.tn-chip-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* Market status badge */
+.tn-market-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 0 10px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-obsidian);
+  border: 1px solid var(--glass-border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tn-market-status.open  { color: var(--success); border-color: rgba(14, 203, 129, 0.2); }
+.tn-market-status.closed { color: var(--text-dim); }
+
+.tn-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.tn-market-status.open .tn-status-dot {
+  animation: tn-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes tn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.65); }
+}
+
+/* Logout button */
+.tn-logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-pannel-lighter);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  padding: 0 12px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.tn-logout:hover {
+  background: var(--error);
+  color: #fff;
+  border-color: var(--error);
+}
+
+/* ================================================================
+   RESPONSIVE BREAKPOINTS
+   ================================================================ */
+
+/* Compact on mid-size screens */
+@media (max-width: 1400px) {
+  .tn-container { padding: 0 20px; gap: 14px; }
+  .tn-divider   { margin: 0 16px; }
+  .tn-links     { gap: 0; }
+  .tn-center    { max-width: 280px; }
+}
+
+/* Hide equity chip on smaller screens */
+@media (max-width: 1100px) {
+  .tn-equity-chip { display: none; }
+  .tn-link        { padding: 5px 9px; font-size: 0.76rem; }
+  .tn-center      { max-width: 200px; }
+}
+
+/* Hide nav links on tablet; show only brand + search + logout */
+@media (max-width: 860px) {
+  .tn-links   { display: none; }
+  .tn-divider { display: none; }
+  .tn-center  { flex: 1; max-width: 100%; }
+}
+
+/* On very small screens hide even the logout label */
+@media (max-width: 620px) {
+  .tn-logout span { display: none; }
+  .tn-logout       { padding: 0 10px; }
+}

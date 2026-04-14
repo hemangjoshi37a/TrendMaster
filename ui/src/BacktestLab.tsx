@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useAccount } from './hooks/useAccount';
+import { ExpiryOverlay } from './components/Dashboard/ExpiryBanner';
 import BacktestChart from './BacktestChart';
 import Footer from './Footer';
 import TopNav from './TopNav';
@@ -26,16 +27,16 @@ interface BacktestResults {
 }
 
 const BacktestLab: React.FC = () => {
+  const { isPro, isExpired, daysRemaining } = useAccount();
   const [symbol, setSymbol] = useState('RELIANCE');
   const [period, setPeriod] = useState('2y');
   const [testDays, setTestDays] = useState(90);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<BacktestResults | null>(null);
-  const location = useLocation();
-  const isPro = location.state?.isPro || false;
 
   const runBacktest = async () => {
+    if (!isPro) return;
     setLoading(true);
     setError(null);
     try {
@@ -52,6 +53,21 @@ const BacktestLab: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (!isPro) {
+    return (
+      <div className="backtest-lab-wrapper dark-theme">
+        <TopNav activePage="backtest" isPro={false} />
+        <ExpiryOverlay 
+            isPro={false} 
+            isExpired={true} 
+            daysRemaining={0} 
+            onUpgradeClick={() => window.location.href = '/dashboard'} 
+        />
+        <Footer isPro={false} wsStatus="connected" />
+      </div>
+    );
+  }
 
   return (
     <div className="backtest-lab-wrapper dark-theme">
