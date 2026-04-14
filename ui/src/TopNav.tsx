@@ -36,11 +36,40 @@ const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const navigate = useNavigate();
   const [isPro, setIsPro] = useState(isProProp);
-  const [state, setState] = useState<PaperTradingState>(() => {
-    const saved = localStorage.getItem('tm_paper_trading');
-    if (saved) return JSON.parse(saved);
-    return { cash: 1000000, positions: [], history: [] };
-  });
+  const [state, setState] = useState<PaperTradingState>({ cash: 100000, positions: [], history: [] });
+
+  useEffect(() => {
+    const fetchPortfolioState = async () => {
+      try {
+        const sessionStr = localStorage.getItem('tm_session');
+        if (!sessionStr) return;
+        const session = JSON.parse(sessionStr);
+
+        const res = await fetch('/api/user', {
+           headers: { 'X-User-Id': session.userId.toString() }
+        });
+        if (res.ok) {
+          const user = await res.json();
+          setState({
+            cash: user.cash_balance,
+            positions: user.positions.map((p: any) => ({
+              symbol: p.symbol,
+              qty: p.quantity,
+              avgPrice: p.average_price,
+              takeProfit: p.take_profit,
+              stopLoss: p.stop_loss
+            })),
+            history: user.transactions || []
+          });
+        }
+      } catch(e) { console.error("Failed to load TopNav DB state", e); }
+    };
+
+    fetchPortfolioState();
+    // Refresh periodically if we aren't completely overridden
+    const id = setInterval(fetchPortfolioState, 15000);
+    return () => clearInterval(id);
+  }, []);
   const [livePrices, setLivePrices] = useState<{ [symbol: string]: number }>({});
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Company[]>([]);

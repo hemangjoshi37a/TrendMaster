@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 import TopNav from './TopNav';
+import Footer from './Footer';
 import './App.css';
 
 interface Company {
@@ -354,6 +355,7 @@ function SimpleDashboard() {
 
         </div>
       </main>
+      <Footer isPro={false} wsStatus="disconnected" />
     </div>
   );
 }

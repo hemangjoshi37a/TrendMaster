@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 import TopNav from './TopNav';
+import Footer from './Footer';
 import './App.css';
 
 interface Company {
@@ -613,6 +614,7 @@ function ProDashboard() {
 
         </div>
       </main>
+      <Footer isPro={true} wsStatus={wsStatus} />
     </div>
   );
 }
