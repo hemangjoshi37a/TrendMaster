@@ -6,6 +6,7 @@ import RiskLab from './components/RiskLab';
 import DeepScan from './components/DeepScan';
 import { useAccount } from './hooks/useAccount';
 import { ExpiryOverlay } from './components/Dashboard/ExpiryBanner';
+import Footer from './Footer';
 import './App.css'; 
 
 interface RiskStats {
@@ -325,6 +326,7 @@ const MultiversePage: React.FC = () => {
         .error-glow { color: var(--error); padding: 20px; background: hsla(355, 78%, 56%, 0.1); border-radius: 8px; margin-top: 30px; border: 1px solid hsla(355, 78%, 56%, 0.2); text-shadow: 0 0 10px hsla(355, 78%, 56%, 0.3); }
         .quantum-footer-disclaimer { margin-top: 40px; padding: 20px; text-align: center; color: var(--text-dim); font-size: 0.7rem; line-height: 1.6; border-top: 1px solid var(--glass-border); }
       `}</style>
+      <Footer isPro={isPro} wsStatus="disconnected" />
     </div>
   );
 };

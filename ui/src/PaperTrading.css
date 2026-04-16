@@ -1,10 +1,9 @@
 .pt-pro-wrapper {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-obsidian);
   color: var(--text-main);
-  overflow: hidden;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
@@ -15,6 +14,8 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  min-height: calc(100vh - 64px);
+  flex-shrink: 0;
 }
 
 /* Left Column (Chart + Bottom Pane) */
@@ -225,6 +226,7 @@
 }
 .pt-input-raw {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   color: #EAECEF;
@@ -239,6 +241,8 @@
   font-size: 0.8rem;
   font-weight: 600;
   margin-left: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .pt-slider-container {

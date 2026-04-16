@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import LineChart from './LineChart';
 import EquityCurve from './EquityCurve';
 import TopNav from './TopNav';
+import Footer from './Footer';
 import './PaperTrading.css';
 
 interface Position {
@@ -39,7 +40,7 @@ interface PredictionData {
   warning?: string;
 }
 
-const DEFAULT_CASH = 1000000;
+const DEFAULT_CASH = 100000;
 
 const PaperTrading: React.FC = () => {
   const location = useLocation();
@@ -668,6 +669,7 @@ const PaperTrading: React.FC = () => {
           {toast.msg}
         </div>
       )}
+      <Footer isPro={isPro} wsStatus="connected" />
     </div>
   );
 };

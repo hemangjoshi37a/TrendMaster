@@ -28,7 +28,7 @@ interface PaperTradingState {
   history: Transaction[];
 }
 
-const DEFAULT_CASH = 1000000;
+const DEFAULT_CASH = 100000;
 
 const Portfolio: React.FC = () => {
   const location = useLocation();

@@ -13,7 +13,7 @@ class User(Base):
     is_pro = Column(Boolean, default=False)
     username = Column(String, unique=True, index=True)
     zerodha_userid = Column(String, nullable=True)
-    cash_balance = Column(Float, default=1000000.0)
+    cash_balance = Column(Float, default=100000.0)
 
     positions = relationship("PortfolioPosition", back_populates="owner")
     transactions = relationship("TransactionHistory", back_populates="owner")
